@@ -1,0 +1,12 @@
+# Folder
+00.Bootloader/tmp
+01.Kernel32/tmp
+02.Kernel64/tmp
+
+#File
+run.bat
+ImageMaker
+Disk.img
+00.Bootloader/Bootloader.bin
+01.Kernel32/Kernel32.bin
+02.Kernel64/Kernel64.bin
