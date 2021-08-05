@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Types.h"
+#include "Types.hpp"
 
 #define KEY_SKIPCOUNTFORPAUSE   2
 

@@ -1,4 +1,4 @@
-#include "Keyboard.h"
+#include "Keyboard.hpp"
 
 static KeyMappingEntry gs_vstKeyMappingTable[ KEY_MAPPINGTABLEMAXCOUNT ] =
 {

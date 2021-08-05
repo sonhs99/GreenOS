@@ -1,4 +1,4 @@
-#include "Types.h"
+#include "Types.hpp"
 
 void kPrintString(int iX, int iY, const char * pcString);
 extern "C"{
