@@ -29,6 +29,7 @@ remove:
 clean:
 	make -C 00.BootLoader clean
 	make -C 01.Kernel32 clean
+	make -C 02.Kernel64 clean
 	rm -f Disk.img
 
 run:

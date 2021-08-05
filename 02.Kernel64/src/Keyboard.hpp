@@ -82,12 +82,12 @@ struct KeyboardManager {
 bool kIsOutputBufferFull();
 bool kIsInputBufferFull();
 bool kActivateKeyboard();
-u8 kGetKeyboardScanCode();
+u8   kGetKeyboardScanCode();
 bool kChangeKeyboardLED(bool bCapsLockDown, bool bNumLockDown, bool bScrollLockOn);
 void kEnableA20Gate();
 void kReboot();
 bool kIsAlphabetScanCode(u8 bScanCode);
 bool kIsNumberPadScanCode(u8 bScancode);
 bool kIsUseCombinedCode(bool bScanCode);
-void UpdateCombinedKeyStatusAndLED(u8 bScanCode);
-bool kConvertScanCodeToASCIICode(u8 bScanCode, u8 pbASCIICode, bool* pbFlags);
+void kUpdateCombinedKeyStatusAndLED(u8 bScanCode);
+bool kConvertScanCodeToASCIICode(u8 bScanCode, u8 & bASCIICode, u8& bFlags);

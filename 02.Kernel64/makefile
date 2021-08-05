@@ -1,5 +1,5 @@
 ASM64 = nasm -f elf64
-GPP64 = g++ -c -m64 -ffreestanding
+GPP64 = g++ -c -m64 -ffreestanding -mmanual-endbr
 LD64 = ld -melf_x86_64 -T ../linker.ld -nostdlib -e Main -Ttext 0x200000
 OBJCOPY64 = objcopy -j .text -j .data -j .rodata -j .bss -S -O binary
 

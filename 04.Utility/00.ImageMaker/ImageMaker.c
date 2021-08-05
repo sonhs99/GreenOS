@@ -50,7 +50,7 @@ int main(int argc, char * argv[]) {
     }
     iSourceSize = CopyFile(iSourceFd, iTargetFd);
     iKernel64SectorSize = AdjustInSectorSize(iTargetFd, iSourceSize);
-    printf("[INFO] %s size = [%d] and sector count = [%d]\n", argv[2], iSourceSize, iKernel32SectorSize);
+    printf("[INFO] %s size = [%d] and sector count = [%d]\n", argv[3], iSourceSize, iKernel32SectorSize);
     close(iSourceFd);
 
     printf("[INFO] Start to write kernel Information\n");
