@@ -2,6 +2,8 @@
 #include "Keyboard.hpp"
 #include "Assembly.hpp"
 
+void kPrintString(int, int, const char *);
+
 bool kIsOutputBufferFull() {
     if(kInPortByte(0x64) & 0x01) return true;
     return false;
@@ -263,7 +265,7 @@ bool kConvertScanCodeToASCIICode(u8 bScanCode, u8 & bASCIICode, u8 & bFlags) {
         gs_stKeyboardManager.iSkipCountForPause = KEY_SKIPCOUNTFORPAUSE;
         return true;
     }
-    else if(bScanCode = 0xE0) {
+    if(bScanCode == 0xE0) {
         gs_stKeyboardManager.bExtendedCodeIn = true;
         return false;
     }

@@ -23,8 +23,8 @@ extern "C"{
             if(kIsOutputBufferFull()){
                 u8 bTemp = kGetKeyboardScanCode();
                 if(kConvertScanCodeToASCIICode(bTemp, (u8&)(vcTemp[0]), bFlags)){
-                    kPrintString(i++, 13, "A");
-                    if(bFlags & KEY_FLAGS_DOWN) kPrintString(i++, 13, vcTemp);}
+                    if(bFlags & KEY_FLAGS_DOWN) kPrintString(i++, 13, vcTemp);
+                }
             }
         }
     }
