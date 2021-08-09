@@ -17,19 +17,19 @@
 
 #define GDT_FLAGS_LOWER_KERNELCODE  (GDT_TYPE_CODE | GDT_FLAGS_LOWER_S | GDT_FLAGS_LOWER_DPL0 | GDT_FLAGS_LOWER_P)
 #define GDT_FLAGS_LOWER_KERNELDATA  (GDT_TYPE_DATA | GDT_FLAGS_LOWER_S | GDT_FLAGS_LOWER_DPL0 | GDT_FLAGS_LOWER_P)
-#define GDT_FLAGS_LOWER_TSS         (                GDT_FLAGS_LOWER_S | GDT_FLAGS_LOWER_DPL0                    )
+#define GDT_FLAGS_LOWER_TSS         (                                    GDT_FLAGS_LOWER_DPL0 | GDT_FLAGS_LOWER_P)
 #define GDT_FLAGS_LOWER_USERCODE    (GDT_TYPE_CODE | GDT_FLAGS_LOWER_S | GDT_FLAGS_LOWER_DPL3 | GDT_FLAGS_LOWER_P)
 #define GDT_FLAGS_LOWER_USERDATA    (GDT_TYPE_DATA | GDT_FLAGS_LOWER_S | GDT_FLAGS_LOWER_DPL3 | GDT_FLAGS_LOWER_P)
 
-#define GDT_FLAGS_UPPER_CODE      (GDT_FLAGS_UPPER_G | GDT_FLAGS_UPPER_L)
-#define GDT_FLAGS_UPPER_DATA      (GDT_FLAGS_UPPER_G | GDT_FLAGS_UPPER_L)
-#define GDT_FLAGS_UPPER_TSS       (GDT_FLAGS_UPPER_G                    )
+#define GDT_FLAGS_UPPER_CODE        (GDT_FLAGS_UPPER_G | GDT_FLAGS_UPPER_L)
+#define GDT_FLAGS_UPPER_DATA        (GDT_FLAGS_UPPER_G | GDT_FLAGS_UPPER_L)
+#define GDT_FLAGS_UPPER_TSS         (GDT_FLAGS_UPPER_G                    )
 
-#define GDT_KERNELCODESEGMENT 0x08
-#define GDT_KERNELDATASEGMENT 0x10
-#define GDT_TSSSEGMENT        0x18
+#define GDT_KERNELCODESEGMENT   0x08
+#define GDT_KERNELDATASEGMENT   0x10
+#define GDT_TSSSEGMENT          0x18
 
-#define GDTR_STARTADDRESS 0x142000
+#define GDTR_STARTADDRESS       0x142000
 #define GDT_MAXENTRY8COUNT      3
 #define GDT_MAXENTRY16COUNT     1
 #define GDT_TABLESIZE           ((sizeof(GDTEntry8) * GDT_MAXENTRY8COUNT) + (sizeof(GDTEntry16) * GDT_MAXENTRY16COUNT))
@@ -80,7 +80,7 @@ struct GDTEntry16 {
     u16 wLowerLimit;
     u16 wLowerBaseAddress;
     u8  bMiddleBaseAddress1;
-    u8  bTypeAndLowerAddress;
+    u8  bTypeAndLowerFlags;
     u8  bUpperLimitAndUpperFlag;
     u8  bMiddleBaseAddress2;
     u32 dwUpperBaseAddress;
@@ -89,10 +89,11 @@ struct GDTEntry16 {
 };
 
 struct TSSSegment {
-    u32 dwReserved;
+    u32 dwReserved1;
     u64 qwRsp[3];
+    u64 qwReserved2;
     u64 qwIST[7];
-    u64 qwReserved;
+    u64 qwReserved3;
     u16 wReserverd;
     u16 wIOMapBaseAddress;
     void init();
@@ -113,3 +114,4 @@ struct IDTEntry {
 
 void kDummyHandler();
 void kInitializeGDTTableAndTSS();
+void kInitializeIDTTables();
