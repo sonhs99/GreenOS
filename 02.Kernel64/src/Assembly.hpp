@@ -8,4 +8,7 @@ extern "C" {
     void kLoadGDTR(u64 qwGDTRAddress);
     void kLoadTR(u16 wTSSSegmentOffset);
     void kLoadIDTR(u64 qwIDTRAddress);
+    void kEnableInterrupt();
+    void kDisableInterrupt();
+    u64 kReadFLAGS();
 }

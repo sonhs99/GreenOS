@@ -1,5 +1,6 @@
 #include "Descriptor.hpp"
 #include "Utility.hpp"
+#include "IRQ.hpp"
 
 void kPrintString(int iX, int iY, const char * pStr);
 
@@ -51,8 +52,50 @@ void kInitializeIDTTables() {
     pstIDTR->qwBaseAddress = u64(pstEntry);
     pstIDTR->wLimit = IDT_TABLESIZE - 1;
 
-    for(int i = 0; i < IDT_MAXENTRYCOUNT; i++)
-        pstEntry[i].set((void*)kDummyHandler, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 0].set((void*)kISRDivideError, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 1].set((void*)kISRDebug, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 2].set((void*)kISRNMI, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 3].set((void*)kISRBreakPoint, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 4].set((void*)kISROverflow, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 5].set((void*)kISRBoundRangeExceeded, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 6].set((void*)kISRInvalidOpcode, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 7].set((void*)kISRDeviceNotAvailable, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 8].set((void*)kISRDoubleFault, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[ 9].set((void*)kISRCoprocessorSegmentOverrun, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[10].set((void*)kISRInvalidTSS, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[11].set((void*)kISRSegmentNotPresent, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[12].set((void*)kISRStackSegmentFault, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[13].set((void*)kISRGeneralProtection, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[14].set((void*)kISRPageFault, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[15].set((void*)kISR15, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[16].set((void*)kISRFPUError, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[17].set((void*)kISRAlignmentCheck, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[18].set((void*)kISRMachineCheck, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[19].set((void*)kISRSIMDError, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[20].set((void*)kISRETCException, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+
+    for(int i = 21; i < 32; i++)
+        pstEntry[i].set((void*)kISRETCException, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+
+    pstEntry[32].set((void*)kISRTimer, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[33].set((void*)kISRKeyboard, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[34].set((void*)kISRSlavePIC, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[35].set((void*)kISRSerial2, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[36].set((void*)kISRSerial1, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[37].set((void*)kISRParallel2, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[38].set((void*)kISRFloppy, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[39].set((void*)kISRParallel1, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[40].set((void*)kISRRTC, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[41].set((void*)kISRReserved, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[42].set((void*)kISRNotUsed1, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[43].set((void*)kISRNotUsed2, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[44].set((void*)kISRMouse, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[45].set((void*)kISRCoprocessor, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[46].set((void*)kISRHDD1, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+    pstEntry[47].set((void*)kISRHDD2, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
+
+    for(int i = 48; i < IDT_MAXENTRYCOUNT; i++)
+        pstEntry[i].set((void*)kISRETCInterrupt, 0x08, IDT_FLAGS_IST1, IDT_FLAGS_KERNEL, IDT_TYPE_INTERRUPT);
 }
 
 void IDTEntry::set(void* pvHandler, u16 wSelector, u8 bIST, u8 bFlags, u8 bType) {
@@ -63,9 +106,4 @@ void IDTEntry::set(void* pvHandler, u16 wSelector, u8 bIST, u8 bFlags, u8 bType)
     wMiddleBaseAddress = (u64(pvHandler) >> 16) & 0xFFFF;
     dwUpperBaseAddress = u64(pvHandler) >> 32;
     dwReserved = 0;
-}
-
-void kDummyHandler() {
-    kPrintString(0, 0, "[INT] Dummy Interrupt Handler Execute");
-    while(true);
 }

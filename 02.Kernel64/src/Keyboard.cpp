@@ -1,8 +1,8 @@
 #include "Types.hpp"
 #include "Keyboard.hpp"
 #include "Assembly.hpp"
-
-void kPrintString(int, int, const char *);
+#include "Queue.hpp"
+#include "Utility.hpp"
 
 bool kIsOutputBufferFull() {
     if(kInPortByte(0x64) & 0x01) return true;
@@ -14,19 +14,33 @@ bool kIsInputBufferFull() {
     return false;
 }
 
+bool kWaitForACKAndPutOtherScanCode() {
+    bool bResult = false;
+    for(int i = 0; i < 100; i++) {
+        for(int j = 0; j < 0xFFFF; j++)
+            if(kIsOutputBufferFull()) break;
+        u8 bData = kInPortByte(0x60);
+        if(bData == 0xFA){
+            bResult = true;
+            break;
+        } else kConvertScanCodeAndPutQueue(bData);
+    }
+    return bResult;
+}
+
 bool kActivateKeyboard() {
+    bool bPreviousInterrupt = kSetInterruptFlag(false);
+
     kOutPortByte(0x64, 0xAE);
 
     for(int i = 0; i < 0xFFFF; i++) 
         if(!kIsInputBufferFull()) break;
     kOutPortByte(0x60, 0xF4);
 
-    for(int i = 0; i < 100; i++){
-        for(int j = 0; j < 0xFFFF; j++)
-            if(kIsOutputBufferFull()) break;
-        if(kInPortByte(0x60) == 0xFA) return true;
-    }
-    return false;
+    bool bResult = kWaitForACKAndPutOtherScanCode();
+    kSetInterruptFlag(bPreviousInterrupt);
+
+    return bResult;
 }
 
 u8 kGetKeyboardScanCode() {
@@ -35,33 +49,30 @@ u8 kGetKeyboardScanCode() {
 }
 
 bool kChangeKeyboardLED(bool bCapsLockOn, bool bNumLockOn, bool bScrollLockOn) {
+    bool bPreviousInterrupt = kSetInterruptFlag(false);
+
     for(int i = 0; i < 0xFFFF; i++)
         if(!kIsInputBufferFull()) break;
 
     kOutPortByte(0x60, 0xED);
     for(int i = 0; i < 0xFFFF; i++)
         if(!kIsInputBufferFull()) break;
-    
-    int i;
-    for(i = 0; i < 100; i++) {
-        for(int j = 0; j < 0xFFFF; j++)
-            if(kIsOutputBufferFull()) break;
-        if(kInPortByte(0x60) == 0xFA) break;
+
+    bool bResult = kWaitForACKAndPutOtherScanCode();
+    if(!bResult) {
+        kSetInterruptFlag(bPreviousInterrupt);
+        return false;
     }
-    if(i >= 100) return false;
+    
     kOutPortByte(0x60, (bCapsLockOn << 2) | (bNumLockOn << 1 | bScrollLockOn));
 
     for(int i = 0; i < 0xFFFF; i++)
         if(!kIsInputBufferFull()) break;
 
-    for(i = 0; i < 100; i++) {
-        for(int j = 0; j < 0xFFFF; j++)
-            if(kIsOutputBufferFull()) break;
-        if(kInPortByte(0x60) == 0xFA) break;
-    }
-    if(i >= 100) return false;
+    bResult = kWaitForACKAndPutOtherScanCode();
+    kSetInterruptFlag(bPreviousInterrupt);
 
-    return true;
+    return bResult;
 }
 
 void kEnableA20Gate() {
@@ -87,6 +98,8 @@ void kReboot() {
 }
 
 static KeyboardManager gs_stKeyboardManager = {0, };
+
+static Queue<KeyData, KEY_MAXQUEUECOUNT> gs_stQueue;
 
 static KeyMappingEntry gs_vstKeyMappingTable[ KEY_MAPPINGTABLEMAXCOUNT ] =
 {
@@ -202,18 +215,21 @@ bool kIsNumberPadScanCode(u8 bScanCode) {
 
 bool kIsUseCombinedCode(u8 bScanCode) {
     u8 bDownScanCode = bScanCode & 0x7F;
-    bool bUseCombinedKey = false;
+    bool bUseCombinedKey = true;
 
     if(kIsAlphabetScanCode(bDownScanCode))
         if(gs_stKeyboardManager.bShiftDown ^ gs_stKeyboardManager.bCapsLockDown)
             bUseCombinedKey = true;
+        else bUseCombinedKey = false;
     else if(kIsNumberOrSymbolScanCode(bDownScanCode))
         if(gs_stKeyboardManager.bShiftDown)
             bUseCombinedKey = true;
+        else bUseCombinedKey = false;
     else if(kIsNumberPadScanCode(bDownScanCode) &&
             !gs_stKeyboardManager.bExtendedCodeIn)
         if(gs_stKeyboardManager.bNumLockDown)
             bUseCombinedKey = true;
+        else bUseCombinedKey = false;
     
     return bUseCombinedKey;
 }
@@ -234,11 +250,11 @@ void kUpdateCombinationKeyStatusAndLED(u8 bScanCode) {
     if((bDownScanCode == 42) || (bDownScanCode == 54))
         gs_stKeyboardManager.bShiftDown = bDown;
     else if((bDownScanCode == 58) && bDown) {
-        gs_stKeyboardManager.bCapsLockDown = true;
+        gs_stKeyboardManager.bCapsLockDown ^= true;
         bLEDStatusChanged = true;
     }
     else if((bDownScanCode == 69) && bDown) {
-        gs_stKeyboardManager.bCapsLockDown ^= true;
+        gs_stKeyboardManager.bNumLockDown ^= true;
         bLEDStatusChanged = true;
     }
     else if((bDownScanCode == 70) && bDown) {
@@ -284,4 +300,29 @@ bool kConvertScanCodeToASCIICode(u8 bScanCode, u8 & bASCIICode, u8 & bFlags) {
 
     kUpdateCombinationKeyStatusAndLED(bScanCode);
     return true;
+}
+
+bool kInitializeKeyboard() {
+    return kActivateKeyboard();
+}
+
+bool kConvertScanCodeAndPutQueue(u8 bScanCode) {
+    KeyData stData;
+    bool bResult = false;
+
+    stData.bScanCode = bScanCode;
+    if(kConvertScanCodeToASCIICode(bScanCode, stData.bASCIICode, stData.bFlags)) {
+        bool bPreviousInterrupt = kSetInterruptFlag(false);
+        bResult = gs_stQueue.Enqueue(stData);
+        kSetInterruptFlag(bPreviousInterrupt);
+    }
+    return bResult;
+}
+
+bool kGetKeyFromKeyQueue(KeyData& pstData) {
+    if(gs_stQueue.isEmpty()) return false;
+    bool bPreviousInterrupt = kSetInterruptFlag(false);
+    bool bResult = gs_stQueue.Dequeue(pstData);
+    kSetInterruptFlag(bPreviousInterrupt);
+    return bResult;
 }

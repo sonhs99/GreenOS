@@ -2,12 +2,14 @@
 #include "Keyboard.hpp"
 #include "Descriptor.hpp"
 #include "Assembly.hpp"
+#include "PIC.hpp"
 
 void kPrintString(int iX, int iY, const char * pcString);
 extern "C" void Main() {
     char vcTemp[2] = {0, 0};
-    u8 bFlags;
     int i = 0;
+    KeyData stData;
+
     kPrintString( 0, 10, "Switch To IA-32e Mode.......................[Pass]");
     kPrintString( 0, 11, "IA-32e C++ Language Kernel Start............[Pass]");
 
@@ -25,8 +27,8 @@ extern "C" void Main() {
     kLoadIDTR(IDTR_STARTADDRESS);
     kPrintString(45, 14, "Pass");
 
-    kPrintString( 0, 15, "Keyboard Activate...........................[    ]");
-    if(kActivateKeyboard()){
+    kPrintString( 0, 15, "Keyboard Activate And Queue Initialize......[    ]");
+    if(kInitializeKeyboard()){
         kPrintString( 45, 15, "Pass");
         kChangeKeyboardLED(false, false, false);
     } else {
@@ -34,12 +36,18 @@ extern "C" void Main() {
         while(true);
     }
 
+    kPrintString( 0, 16, "PIC Controller And Interrupt Initialize.....[    ]");
+    kInitializePIC();
+    kMaskPICInterrupt(0);
+    kEnableInterrupt();
+    kPrintString( 45, 16, "Pass");
+
     while(true) {
-        if(kIsOutputBufferFull()){
-            u8 bTemp = kGetKeyboardScanCode();
-            if(kConvertScanCodeToASCIICode(bTemp, (u8&)(vcTemp[0]), bFlags)){
-                if(bFlags & KEY_FLAGS_DOWN) kPrintString(i++, 16, vcTemp);
-                if(vcTemp[0] == '0') bTemp /= 0;
+        if(kGetKeyFromKeyQueue(stData)){
+            if(stData.bFlags & KEY_FLAGS_DOWN) {
+                vcTemp[0] = stData.bASCIICode;
+                kPrintString(i++, 17, vcTemp);
+                if(vcTemp[0] == '0') vcTemp[0] /= 0;
             }
         }
     }

@@ -58,13 +58,21 @@
 #define KEY_DEL         0x9D
 #define KEY_F11         0x9E
 #define KEY_F12         0x9F
-#define KEY_PAUSE       0xA0 
+#define KEY_PAUSE       0xA0
+
+#define KEY_MAXQUEUECOUNT   100
 
 #pragma pack(push, 1)
 
 struct KeyMappingEntry {
     u8 bNormalCode;
     u8 bCombinedCode;
+};
+
+struct KeyData {
+    u8 bScanCode;
+    u8 bASCIICode;
+    u8 bFlags;
 };
 
 #pragma pack(pop)
@@ -91,3 +99,8 @@ bool kIsNumberPadScanCode(u8 bScancode);
 bool kIsUseCombinedCode(bool bScanCode);
 void kUpdateCombinedKeyStatusAndLED(u8 bScanCode);
 bool kConvertScanCodeToASCIICode(u8 bScanCode, u8 & bASCIICode, u8& bFlags);
+
+bool kInitializeKeyboard();
+bool kConvertScanCodeAndPutQueue(u8 bScanCode);
+bool kGetKeyFromKeyQueue(KeyData& pstData);
+bool kWaitForACKAndPutOtherScanCode();
