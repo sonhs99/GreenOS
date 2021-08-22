@@ -12,7 +12,7 @@ void kInitializeConsole(int iX, int iY) {
 }
 
 void kSetCursor(int iX, int iY) {
-    int iLinearValue = iX + CONSOLE_WIDTH * iY;
+    int iLinearValue = iY * CONSOLE_WIDTH + iX;
 
     kOutPortByte(VGA_PORT_INDEX, VGA_INDEX_UPPERCURSOR);
     kOutPortByte(VGA_PORT_DATA, iLinearValue >> 8);
@@ -33,11 +33,21 @@ void kPrintf(const char* pcFormatString, ...) {
     char vcBuffer[ 1024 ];
     
     va_start(ap, pcFormatString);
-    kVSPrintf(vcBuffer, pcFormatString);
+    kVSPrintf(vcBuffer, pcFormatString, ap);
     va_end(ap);
 
     int iNextPrintOffset = kConsolePrintString(vcBuffer);
     kSetCursor(iNextPrintOffset % CONSOLE_WIDTH, iNextPrintOffset / CONSOLE_WIDTH);
+}
+
+void kClearScreen() {
+	Charactor* pstScreen = (Charactor*) CONSOLE_VIDEOMEMORYADDRESS;
+	
+	for(int i = 0; i < CONSOLE_WIDTH * CONSOLE_HEIGHT; i++)
+		pstScreen[i] = {
+			.bCharactor = ' ',
+			.bAttribute = CONSOLE_DEFAULTTEXTCOLOR
+		};
 }
 
 int kConsolePrintString(const char* pcBuffer) {
@@ -50,8 +60,10 @@ int kConsolePrintString(const char* pcBuffer) {
         if(pcBuffer[i] == '\n') iPrintOffset += (CONSOLE_WIDTH - (iPrintOffset % CONSOLE_WIDTH));
         else if(pcBuffer[i] == '\t') iPrintOffset += (8 - (iPrintOffset % 8));
         else {
-            pstScreen[i].bCharactor = pcBuffer[i];
-            pstScreen[i].bAttribute = CONSOLE_DEFAULTTEXTCOLOR;
+			pstScreen[iPrintOffset] = {
+				.bCharactor = u8(pcBuffer[i]),
+				.bAttribute = CONSOLE_DEFAULTTEXTCOLOR
+			};
             iPrintOffset++;
         }
 
@@ -59,10 +71,11 @@ int kConsolePrintString(const char* pcBuffer) {
             kMemCpy((void*)CONSOLE_VIDEOMEMORYADDRESS,
                     (void*)(CONSOLE_VIDEOMEMORYADDRESS + CONSOLE_WIDTH * sizeof(Charactor)),
                     (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * sizeof(Charactor));
-            for(int j = (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH; j < (CONSOLE_HEIGHT * CONSOLE_WIDTH); j++) {
-                pstScreen[j].bCharactor = ' ';
-                pstScreen[j].bCharactor = CONSOLE_DEFAULTTEXTCOLOR;
-            }
+            for(int j = (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH; j < (CONSOLE_HEIGHT * CONSOLE_WIDTH); j++)
+				pstScreen[j] = {
+					.bCharactor = ' ',
+					.bAttribute = CONSOLE_DEFAULTTEXTCOLOR
+				};
             iPrintOffset = (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH;
         }
     }
@@ -82,7 +95,9 @@ void kPrintStringXY(int iX, int iY, const char * pcString){
     Charactor* pstScreen = (Charactor*) CONSOLE_VIDEOMEMORYADDRESS;
     pstScreen += (iY * 80) + iX;
     for(int i = 0; pcString[i] != 0; i++){
-        pstScreen[i].bCharactor = pcString[i];
-        pstScreen[i].bAttribute = CONSOLE_DEFAULTTEXTCOLOR;
+		pstScreen[i] = {
+			.bCharactor = u8(pcString[i]),
+			.bAttribute = CONSOLE_DEFAULTTEXTCOLOR
+		};
     }
 }

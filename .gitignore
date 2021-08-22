@@ -2,6 +2,7 @@
 00.Bootloader/tmp
 01.Kernel32/tmp
 02.Kernel64/tmp
+.vscode
 
 #File
 run.bat
