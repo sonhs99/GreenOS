@@ -27,5 +27,28 @@
 #define CONSOLE_DEFAULTTEXTCOLOR            (CONSOLE_BACKGROUND_BLACK | CONSOLE_FOREGROUND_GREEN | CONSOLE_FOREGROUND_BRIGHT)
 
 #define CONSOLE_WIDTH                       80
+#define CONSOLE_HEIGHT                      25
+#define CONSOLE_VIDEOMEMORYADDRESS          0xB8000
 
+#define VGA_PORT_INDEX                      0x3D4
+#define VGA_PORT_DATA                       0x3D5
+#define VGA_INDEX_UPPERCURSOR               0x0E
+#define VGA_INDEX_LOWERCURSOR               0x0F
+
+#pragma pack(push, 1)
+
+struct ConsoleManager {
+    int iCurrentPrintOffset;
+};
+
+#pragma pack(pop)
+
+void kInitializeConsole(int iX, int iY);
+void kSetCursor(int iX, int iY);
+void kGetCursor(int &piX, int &piY);
+void kPrintf(const char* pcFormatString, ...);
+int  kConsolePrintString(const char * pcBuffer);
+void kClearScrenn();
+u8   kGetCh();
+void kPrintStringXY(int iX, int iY, const char* pcString);
 
