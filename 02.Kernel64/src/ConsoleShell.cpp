@@ -17,7 +17,8 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"wait", "Wait ms Using PIT, ex)wait 100ms", kWaitUsingPIT},
 	{"rdtsc", "Read Time Stamp Counter", kReadTimeStampCounter },
 	{"cpuspeed", "Measure Proccessor Speed", kMeasureProcessorSpeed},
-	{"date", "Show Date And Time", kShowDateAndTime}
+	{"date", "Show Date And Time", kShowDateAndTime},
+	{"createtask", "Create Task", kCreateTestTask},
 };
 
 void kStartConsoleShell() {
@@ -225,4 +226,27 @@ void kShowDateAndTime(const char *pcParameterBuffer) {
 	
 	kPrintf("Date: %d/%d/%d %s, ", wYear, bMonth, bDayOfMonth, kConvertDayOfWeekToString(bDayOfWeek));
 	kPrintf("Time: %d:%d:%d\n", bHour, bMinute, bSecond);
+}
+
+static Task gs_vstTask[2] = {};
+static u64 gs_vstStack[1024] = {0,};
+
+void kTestTask() {
+	int i = 0;
+	while(true) {
+		kPrintf("[%d] This Message is from kTestTask. Press any key to switch kConsoleShell~!!\n", i++);
+		kGetCh();
+		kSwitchContext(&gs_vstTask[1].stContext, &gs_vstTask[0].stContext);
+	}
+}
+
+void kCreateTestTask(const char *pcParameterBuffer) {
+	int i = 0;
+	gs_vstTask[1].set(1, 0, u64(kTestTask), &(gs_vstTask[0]), sizeof(gs_vstStack));
+
+	while(true) {
+		kPrintf("[%d] This message is from kConsoleShell. Press any key to switch TestTask~!!\n", i++);
+		if(kGetCh() == 'q') break;
+		kSwitchContext(&(gs_vstTask[0].stContext), &(gs_vstTask[1].stContext));
+	}
 }

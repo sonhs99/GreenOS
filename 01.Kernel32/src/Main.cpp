@@ -12,7 +12,7 @@ void Main( void ){
     char vcVendorString[ 13 ] = "";
 
     kPrintString( 0, 3, "Protected Mode C++ Language Kernel Start....[Pass]");
-    kPrintString( 0, 4, "Minimum Memory Sise Check...................[    ]");
+    kPrintString( 0, 4, "Minimum Memory Size Check...................[    ]");
     if( !kIsMemoryEnough() ) {
         kPrintString(45, 4, "Fail");
         kPrintString( 0, 5, "[ERROR] Not Enough Memory. Require Over 64MB Memory");

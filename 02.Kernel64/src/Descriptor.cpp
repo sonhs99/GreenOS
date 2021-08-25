@@ -2,8 +2,6 @@
 #include "Utility.hpp"
 #include "IRQ.hpp"
 
-void kPrintString(int iX, int iY, const char * pStr);
-
 void kInitializeGDTTableAndTSS() {
     GDTR* pstGDTR = (GDTR*) GDTR_STARTADDRESS;
     GDTEntry8* pstEntry = (GDTEntry8*)(GDTR_STARTADDRESS + sizeof(GDTR));

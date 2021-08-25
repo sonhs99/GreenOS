@@ -2,7 +2,7 @@
 #include "Descriptor.hpp"
 #include "Utility.hpp"
 
-Task::Task(u64 qwID, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
+void Task::set(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
     kMemSet(stContext.vqRegister, 0, sizeof(stContext.vqRegister));
 
     stContext.vqRegister[TASK_RSPOFFSET] = u64(pvStackAddress) + qwStackSize;

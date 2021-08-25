@@ -43,7 +43,9 @@ struct Task {
     
     void    *pvStackAddress;
     u64     qwStackSize;
-    Task(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
+    Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) { set(qwID, qwFlags, qwEntryPointAddress, pvStackAddress, qwStackSize); }
+    Task() {};
+    void set(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
 };
 
 #pragma pack(pop)

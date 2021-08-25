@@ -112,6 +112,5 @@ struct IDTEntry {
 
 #pragma pack(pop)
 
-void kDummyHandler();
 void kInitializeGDTTableAndTSS();
 void kInitializeIDTTables();
