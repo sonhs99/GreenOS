@@ -242,11 +242,11 @@ void kTestTask() {
 
 void kCreateTestTask(const char *pcParameterBuffer) {
 	int i = 0;
-	gs_vstTask[1].set(1, 0, u64(kTestTask), &(gs_vstTask[0]), sizeof(gs_vstStack));
+	gs_vstTask[1] = Task(0, u64(kTestTask), &(gs_vstTask[0]), sizeof(gs_vstStack));
 
 	while(true) {
 		kPrintf("[%d] This message is from kConsoleShell. Press any key to switch TestTask~!!\n", i++);
 		if(kGetCh() == 'q') break;
-		kSwitchContext(&(gs_vstTask[0].stContext), &(gs_vstTask[1].stContext));
+		kSwitchContext(&gs_vstTask[0].stContext, &gs_vstTask[1].stContext);
 	}
 }

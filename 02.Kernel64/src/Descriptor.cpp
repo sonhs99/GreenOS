@@ -1,6 +1,6 @@
 #include "Descriptor.hpp"
 #include "Utility.hpp"
-#include "IRQ.hpp"
+#include "ISR.hpp"
 
 void kInitializeGDTTableAndTSS() {
     GDTR* pstGDTR = (GDTR*) GDTR_STARTADDRESS;

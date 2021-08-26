@@ -1,6 +1,6 @@
-#include "Types.h"
-#include "Page.h"
-#include "ModeSwitch.h"
+#include "Types.hpp"
+#include "Page.hpp"
+#include "ModeSwitch.hpp"
 
 void kPrintString(int iX, int iY, const char * pcString);
 bool kInitializeKernel64Area();

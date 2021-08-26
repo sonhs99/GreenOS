@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Types.h"
+#include "Types.hpp"
 
 #define PAGE_FLAGS_P        0x00000001
 #define PAGE_FLAGS_RW       0x00000002

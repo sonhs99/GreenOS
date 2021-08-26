@@ -1,4 +1,4 @@
-#include "Page.h"
+#include "Page.hpp"
 
 void kInitializePageTables() {
     PML4TENTRY* pstPML4TEntry = (PML4TENTRY*) 0x100000;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Types.hpp"
+#include "List.hpp"
 
 #define TASK_REGISTERCOUNT      ( 5 + 19 )
 #define TASK_REGISTERSIZE       8
@@ -30,22 +31,59 @@
 #define TASK_RSPOFFSET          22
 #define TASK_SSOFFSET           23
 
+#define TASK_TCBPOOLADDRESS     0x800000
+#define TASK_MAXCOUNT           1024
+
+#define TASK_STACKPOOLADDRESS   (TASK_TCBPOOLADDRESS + sizeof(Task) * TASK_MAXCOUNT)
+#define TASK_STACKSIZE          8192
+
+#define TASK_INVALIDID          0xFFFFFFFFFFFFFFFF
+#define TASK_PROCESSORTIME      5
+
 #pragma pack(push, 1)
 
 struct Context {
-    u64 vqRegister[TASK_REGISTERSIZE];
+    u64 vqRegister[TASK_REGISTERCOUNT];
+    Context();
+    Context(const Context & n);
 };
 
-struct Task {
-    Context stContext;
-    u64     qwID;
+struct Task : public ListNode {
     u64     qwFlags;
+    Context stContext;
     
     void    *pvStackAddress;
     u64     qwStackSize;
-    Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) { set(qwID, qwFlags, qwEntryPointAddress, pvStackAddress, qwStackSize); }
+    Task(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
     Task() {};
-    void set(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
+};
+
+struct TaskPoolManager {
+    Task* pstStartAddress;
+    int iMaxCount;
+    int iUseCount;
+    int iAllocatedCount;
+    TaskPoolManager();
+};
+
+struct Scheduler {
+    Task *pstRunningTask;
+    int iProcessorTime;
+    List stReadyList;
 };
 
 #pragma pack(pop)
+
+Task* kAllocateTask();
+void kFreeTask(u64 qwID);
+Task* kCreateTask(u64 qwFlags, u64 qwEntryPointAddress);
+
+void kInitializeScheduler();
+void kSetRunningTask(Task* pstTask);
+Task* kGetRunningTask();
+Task* kGetNextTaskToRun();
+void kAddTaskToReadyList(Task* pstTask);
+void kSchedule();
+bool kScheduleInInterrupt();
+bool kDecreaseProcessorTime();
+bool kIsProcessorTimeExpired();

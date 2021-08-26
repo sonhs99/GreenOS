@@ -95,14 +95,11 @@ kReadTSC:
 ; 콘텍스트를 복원하는 매크로
 %macro KLOADCONTEXT 0   ; 파라미터를 전달받지 않는 KSAVECONTEXT 매크로 정의
     ; GS 세그먼트 셀렉터부터 RBP 레지스터까지 모두 스택에서 꺼내 복원
-    pop ax
-    jmp $
-    mov gs, ax
-    pop ax
-    mov fs, ax
-    pop ax
+    pop gs
+    pop fs
+    pop rax
     mov es, ax      ; ES 세그먼트 셀렉터와 DS 세그먼트 셀렉터는 스택에서 직접
-    pop ax         ; 꺼내 복원할 수 없으므로, RAX 레지스터에 저장한 뒤에 복원
+    pop rax         ; 꺼내 복원할 수 없으므로, RAX 레지스터에 저장한 뒤에 복원
     mov ds, ax
 
     pop r15
@@ -161,7 +158,6 @@ kSwitchContext:
 
 .LoadContext:
     mov rsp, rsi
-    ; jmp $
 
     KLOADCONTEXT
     iretq
