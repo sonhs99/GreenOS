@@ -1,4 +1,5 @@
 #include "List.hpp"
+#include "Console.hpp"
 
 void List::AddListToTail(ListNode* tItem) {
     tItem->pstNext = nullptr;
@@ -16,10 +17,10 @@ void List::AddListToHeader(ListNode* tItem) {
 }
 
 ListNode* List::Remove(u64 qwID) {
-    ListNode* prev;
+    ListNode* prev = pstHead;
     for(ListNode* curr = pstHead; curr != nullptr; curr = curr->pstNext){
         if(curr->qwID == qwID) {
-            if(pstHead == pstTail)
+            if(pstHead == curr && pstTail == curr)
                 pstHead = pstTail = nullptr;
             else if(curr == pstHead)
                 pstHead = curr->pstNext;

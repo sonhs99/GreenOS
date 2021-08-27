@@ -2,6 +2,7 @@
 #include "Descriptor.hpp"
 #include "Utility.hpp"
 #include "Assembly.hpp"
+#include "Console.hpp"
 
 static Scheduler gs_stScheduler;
 static TaskPoolManager gs_stTaskPoolManager;
@@ -23,18 +24,19 @@ Task* kAllocateTask() {
 
     if(gs_stTaskPoolManager.iUseCount == gs_stTaskPoolManager.iMaxCount) return nullptr;
 
-    for(i = 0; i < gs_stTaskPoolManager.iMaxCount; i++)
-        if((gs_stTaskPoolManager.pstStartAddress[i].qwID >> 32) == 0) {
+    for(i = 0; i < gs_stTaskPoolManager.iMaxCount; i++) {
+		if((gs_stTaskPoolManager.pstStartAddress[i].qwID >> 32) == 0) {
             pstEmptyTask = &(gs_stTaskPoolManager.pstStartAddress[i]);
             break;
         }
+	}
 
-    pstEmptyTask->qwID = (u64(gs_stTaskPoolManager.iAllocatedCount) << 32) | i;
-    gs_stTaskPoolManager.iUseCount++;
-    gs_stTaskPoolManager.iAllocatedCount++;
+	pstEmptyTask->qwID = (u64(gs_stTaskPoolManager.iAllocatedCount) << 32) | i;
+	gs_stTaskPoolManager.iUseCount++;
+	gs_stTaskPoolManager.iAllocatedCount++;
     if(gs_stTaskPoolManager.iAllocatedCount == 0)
         gs_stTaskPoolManager.iAllocatedCount = 1;
-    return pstEmptyTask;
+	return pstEmptyTask;
 }
 
 void kFreeTask(u64 qwID) {
@@ -49,14 +51,14 @@ Task* kCreateTask(u64 qwFlags, u64 qwEntryPointAddress) {
     Task *pstTask = kAllocateTask();
     if(pstTask == nullptr) return nullptr;
 
-    void *pvStackAddress = (void*)(TASK_STACKPOOLADDRESS + (TASK_STACKSIZE * pstTask->qwID & 0xFFFFFFFF));
-    *pstTask = Task(qwFlags, qwEntryPointAddress, pvStackAddress, TASK_STACKSIZE);
+	void *pvStackAddress = (void *)(TASK_STACKPOOLADDRESS + (TASK_STACKSIZE * pstTask->qwID & 0xFFFFFFFF));
+    *pstTask = Task(pstTask->qwID, qwFlags, qwEntryPointAddress, pvStackAddress, TASK_STACKSIZE);
 
     kAddTaskToReadyList(pstTask);
     return pstTask;
 }
 
-Task::Task(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
+Task::Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
     stContext.vqRegister[TASK_RSPOFFSET] = u64(pvStackAddress) + qwStackSize;
     stContext.vqRegister[TASK_RBPOFFSET] = u64(pvStackAddress) + qwStackSize;
 
@@ -71,7 +73,7 @@ Task::Task(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwSta
 
     stContext.vqRegister[TASK_RFLAGOFFSET] |= 0x0200;
 
-    this->qwID = qwID;
+	this->qwID = qwID;
     this->pvStackAddress = pvStackAddress;
     this->qwStackSize = qwStackSize;
     this->qwFlags = qwFlags;
@@ -98,6 +100,7 @@ Task* kGetRunningTask() {
     return gs_stScheduler.pstRunningTask;
 }
 
+bool asdf = false;
 Task* kGetNextTaskToRun() {
     if(gs_stScheduler.stReadyList.ItemCount() == 0) return nullptr;
     return (Task*) gs_stScheduler.stReadyList.RemoveListFromHead();
@@ -122,7 +125,9 @@ void kSchedule() {
     pstRunningTask = kGetRunningTask();
     kAddTaskToReadyList(pstRunningTask);
 
+	assert(pstRunningTask == gs_stScheduler.stReadyList.Tail());
     kSetRunningTask(pstNextTask);
+	// kPrintf("%p -> %p, (%d)\n", pstRunningTask->qwID, pstNextTask->qwID, gs_stScheduler.stReadyList.ItemCount());
     kSwitchContext(&(pstRunningTask->stContext), &(pstNextTask->stContext));
 
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
@@ -130,8 +135,10 @@ void kSchedule() {
 }
 
 bool kScheduleInInterrupt() {
+	asdf = true;
     Task *pstRunningTask = kGetRunningTask(), *pstNextTask = kGetNextTaskToRun();
-    char *pcContextAddress = (char*)IST_STARTADDRESS + IST_SIZE - sizeof(Context);
+	asdf = false;
+    char *pcContextAddress = (char*)(IST_STARTADDRESS + IST_SIZE - sizeof(Context));
 
     if(pstNextTask == nullptr) return false;
 

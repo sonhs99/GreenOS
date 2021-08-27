@@ -54,8 +54,7 @@ struct Task : public ListNode {
     
     void    *pvStackAddress;
     u64     qwStackSize;
-    Task(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
-    Task() {};
+    Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
 };
 
 struct TaskPoolManager {

@@ -27,7 +27,7 @@ public:
 
     ListNode* RemoveListFromHead() {
         if(iItemCount == 0) return nullptr;
-        return Remove(pstHead->qwID);
+		return Remove(pstHead->qwID);
     }
 
     ListNode* RemoveListFromTail() {

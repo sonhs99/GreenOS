@@ -93,7 +93,7 @@ u8 kGetCh() {
 
 void kPrintStringXY(int iX, int iY, const char * pcString){
     Charactor* pstScreen = (Charactor*) CONSOLE_VIDEOMEMORYADDRESS;
-    pstScreen += (iY * 80) + iX;
+    pstScreen += (iY * CONSOLE_WIDTH) + iX;
     for(int i = 0; pcString[i] != 0; i++){
 		pstScreen[i] = {
 			.bCharactor = u8(pcString[i]),

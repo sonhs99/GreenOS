@@ -19,6 +19,7 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"cpuspeed", "Measure Proccessor Speed", kMeasureProcessorSpeed},
 	{"date", "Show Date And Time", kShowDateAndTime},
 	{"createtask", "Create Task, ex)createtask 1(type) 10(count)", kCreateTestTask},
+	{"test", "Test features", kTest},
 };
 
 void kStartConsoleShell() {
@@ -229,14 +230,11 @@ void kShowDateAndTime(const char *pcParameterBuffer) {
 }
 
 void kTestTask1() {
-	// while(true);
 	u8 bData;
 	int i = 0, iX = 0, iY = 0, iMargin;
 	Charactor *pstScreen = (Charactor*)CONSOLE_VIDEOMEMORYADDRESS;
-	Task *pstRunningTask;
-
-	pstRunningTask = kGetRunningTask();
-	iMargin = (pstRunningTask->qwID & 0xFFFFFFFF);
+	Task *pstRunningTask = kGetRunningTask();
+	iMargin = (pstRunningTask->qwID & 0xFFFFFFFF) % 10 + 1;
 
 	while(true) {
 		switch(i) {
@@ -252,7 +250,7 @@ void kTestTask1() {
 			iX--;
 			if(iX < iMargin) i = 3;
 			break;
-		case 4:
+		case 3:
 			iY--;
 			if(iY < iMargin) i = 0;
 			break;
@@ -280,6 +278,7 @@ void kTestTask2() {
 			.bCharactor = u8(vcData[i % 4]),
 			.bAttribute = u8((iOffset % 15) + 1)
 		};
+		i++;
 		kSchedule();
 	}
 }
@@ -305,6 +304,11 @@ void kCreateTestTask(const char *pcParameterBuffer) {
 			if(kCreateTask(0, u64(kTestTask2)) == nullptr) break;
 		kPrintf("Task2 %d Created\n", i);
 	}
-	Task *pstRunningTask = kGetNextTaskToRun(), current;
-	kSwitchContext(&current.stContext, &pstRunningTask->stContext);
+}
+
+void kTest(const char *pcParameterBuffer) {
+	Task *pstStartAddress = (Task*) TASK_TCBPOOLADDRESS;
+	for (int i = 0; i < 10; i++)
+		kPrintf("%p\n", pstStartAddress[i].qwID);
+	kPrintf("Test Completed.\n");
 }
