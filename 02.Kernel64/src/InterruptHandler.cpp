@@ -2,6 +2,8 @@
 #include "PIC.hpp"
 #include "Keyboard.hpp"
 #include "Console.hpp"
+#include "Utility.hpp"
+#include "Task.hpp"
 
 void kCommonExceptionHandler(int iVectorNumber, u64 qwErrorCode) {
     char vcBuffer[3] = {0,};
@@ -18,13 +20,13 @@ void kCommonExceptionHandler(int iVectorNumber, u64 qwErrorCode) {
 
 void kCommonInterruptHandler(int iVectorNumber) {
     char vcBuffer[] = "[INT:  , ]";
-    static int g_iCommonInturrptCount = 0;
+    static int g_iCommoninterrptCount = 0;
 
     vcBuffer[5] = '0' + iVectorNumber / 10;
     vcBuffer[6] = '0' + iVectorNumber % 10;
-    vcBuffer[8] = '0' + g_iCommonInturrptCount;
+    vcBuffer[8] = '0' + g_iCommoninterrptCount;
 
-    g_iCommonInturrptCount = (g_iCommonInturrptCount + 1) % 10;
+    g_iCommoninterrptCount = (g_iCommoninterrptCount + 1) % 10;
 
     kPrintStringXY(70, 0, vcBuffer);
     kSendEOIToPIC(iVectorNumber - PIC_IRQSTARTVECTOR);
@@ -32,13 +34,13 @@ void kCommonInterruptHandler(int iVectorNumber) {
 
 void kKeyboardHandler(int iVectorNumber) {
     char vcBuffer[] = "[INT:  , ]";
-    static int g_iKeyboardInturrptCount = 0;
+    static int g_iKeyboardinterrptCount = 0;
 
     vcBuffer[5] = '0' + iVectorNumber / 10;
     vcBuffer[6] = '0' + iVectorNumber % 10;
-    vcBuffer[8] = '0' + g_iKeyboardInturrptCount;
+    vcBuffer[8] = '0' + g_iKeyboardinterrptCount;
 
-    g_iKeyboardInturrptCount = (g_iKeyboardInturrptCount + 1) % 10;
+    g_iKeyboardinterrptCount = (g_iKeyboardinterrptCount + 1) % 10;
 
     kPrintStringXY( 0, 0, vcBuffer);
 
@@ -48,4 +50,22 @@ void kKeyboardHandler(int iVectorNumber) {
     }
     
     kSendEOIToPIC(iVectorNumber - PIC_IRQSTARTVECTOR);
+}
+
+void kTimerHandler(int iVectorNumber) {
+    char vcBuffer[] = "[INT:  , ]";
+    static int g_iTimerInterruptCount = 0;
+
+    vcBuffer[5] = '0' + iVectorNumber / 10;
+    vcBuffer[6] = '0' + iVectorNumber % 10;
+    vcBuffer[8] = '0' + g_iTimerInterruptCount;
+
+    g_iTimerInterruptCount = (g_iTimerInterruptCount + 1) % 10;
+
+    kPrintStringXY(70, 0, vcBuffer);
+    kSendEOIToPIC(iVectorNumber - PIC_IRQSTARTVECTOR);
+
+    g_qwTickCount++;
+    kDecreaseProcessorTime();
+    if(kIsProcessorTimeExpired()) kScheduleInInterrupt();
 }

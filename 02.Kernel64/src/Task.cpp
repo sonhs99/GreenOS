@@ -6,15 +6,15 @@
 static Scheduler gs_stScheduler;
 static TaskPoolManager gs_stTaskPoolManager;
 
-TaskPoolManager::TaskPoolManager() {
-    kMemSet(this, 0, sizeof(TaskPoolManager));
-    pstStartAddress = (Task*)TASK_TCBPOOLADDRESS;
-    kMemSet(pstStartAddress, 0, sizeof(Task) * TASK_MAXCOUNT);
+void kInitializeTaskPool(TaskPoolManager& pstManager) {
+    kMemSet(&pstManager, 0, sizeof(TaskPoolManager));
+    pstManager.pstStartAddress = (Task*)TASK_TCBPOOLADDRESS;
+    kMemSet(pstManager.pstStartAddress, 0, sizeof(Task) * TASK_MAXCOUNT);
     for(int i = 0; i < TASK_MAXCOUNT; i++)
-        pstStartAddress[i].qwID = i;
+        pstManager.pstStartAddress[i].qwID = i;
     
-    iMaxCount = TASK_MAXCOUNT;
-    iAllocatedCount = 1;
+    pstManager.iMaxCount = TASK_MAXCOUNT;
+    pstManager.iAllocatedCount = 1;
 }
 
 Task* kAllocateTask() {
@@ -85,12 +85,17 @@ Context::Context(const Context & n) {
     kMemCpy(vqRegister, n.vqRegister, sizeof(vqRegister));
 }
 
-void kInitializeScheduler(TaskPoolManager &) {
+void kInitializeScheduler() {
+    kInitializeTaskPool(gs_stTaskPoolManager);
     gs_stScheduler.pstRunningTask = kAllocateTask();
 }
 
 void kSetRunningTask(Task *pstTask) {
     gs_stScheduler.pstRunningTask = pstTask;
+}
+
+Task* kGetRunningTask() {
+    return gs_stScheduler.pstRunningTask;
 }
 
 Task* kGetNextTaskToRun() {
@@ -114,8 +119,36 @@ void kSchedule() {
         kSetInterruptFlag(bPreviousFlag);
         return;
     }
-    pstRunningTask = gs_stScheduler.pstRunningTask;
+    pstRunningTask = kGetRunningTask();
     kAddTaskToReadyList(pstRunningTask);
-    gs_stScheduler.pstRunningTask = pstNextTask;
+
+    kSetRunningTask(pstNextTask);
     kSwitchContext(&(pstRunningTask->stContext), &(pstNextTask->stContext));
+
+    gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
+    kSetInterruptFlag(bPreviousFlag);
+}
+
+bool kScheduleInInterrupt() {
+    Task *pstRunningTask = kGetRunningTask(), *pstNextTask = kGetNextTaskToRun();
+    char *pcContextAddress = (char*)IST_STARTADDRESS + IST_SIZE - sizeof(Context);
+
+    if(pstNextTask == nullptr) return false;
+
+    kMemCpy(&(pstRunningTask->stContext), pcContextAddress, sizeof(Context));
+    kAddTaskToReadyList(pstRunningTask);
+
+    kSetRunningTask(pstNextTask);
+    kMemCpy(pcContextAddress, &(pstNextTask->stContext), sizeof(Context));
+
+    gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
+    return true;
+}
+
+void kDecreaseProcessorTime() {
+    if(gs_stScheduler.iProcessorTime > 0) gs_stScheduler.iProcessorTime--;
+}
+
+bool kIsProcessorTimeExpired() {
+    return gs_stScheduler.iProcessorTime <= 0;
 }

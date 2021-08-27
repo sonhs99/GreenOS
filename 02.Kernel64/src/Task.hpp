@@ -63,7 +63,6 @@ struct TaskPoolManager {
     int iMaxCount;
     int iUseCount;
     int iAllocatedCount;
-    TaskPoolManager();
 };
 
 struct Scheduler {
@@ -85,5 +84,5 @@ Task* kGetNextTaskToRun();
 void kAddTaskToReadyList(Task* pstTask);
 void kSchedule();
 bool kScheduleInInterrupt();
-bool kDecreaseProcessorTime();
+void kDecreaseProcessorTime();
 bool kIsProcessorTimeExpired();

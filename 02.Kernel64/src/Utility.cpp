@@ -1,6 +1,8 @@
 #include "Utility.hpp"
 #include "Assembly.hpp"
 
+volatile u64 g_qwTickCount = 0;
+
 void kMemSet(void* pvDestination, u8 bData, int iSize) {
     for(int i = 0; i < iSize; i++)
         ((char*) pvDestination)[i] = bData;
@@ -214,4 +216,8 @@ int kVSPrintf(char *pcBuffer, const char* pcFormatString, va_list ap) {
 
 	pcBuffer[iBufferIndex] = '\0';
 	return iBufferIndex;
+}
+
+u64 kGetTickCount() {
+	return g_qwTickCount;
 }

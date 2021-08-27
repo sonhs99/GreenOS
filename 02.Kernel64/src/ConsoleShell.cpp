@@ -18,7 +18,7 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"rdtsc", "Read Time Stamp Counter", kReadTimeStampCounter },
 	{"cpuspeed", "Measure Proccessor Speed", kMeasureProcessorSpeed},
 	{"date", "Show Date And Time", kShowDateAndTime},
-	{"createtask", "Create Task", kCreateTestTask},
+	{"createtask", "Create Task, ex)createtask 1(type) 10(count)", kCreateTestTask},
 };
 
 void kStartConsoleShell() {
@@ -228,25 +228,83 @@ void kShowDateAndTime(const char *pcParameterBuffer) {
 	kPrintf("Time: %d:%d:%d\n", bHour, bMinute, bSecond);
 }
 
-static Task gs_vstTask[2] = {};
-static u64 gs_vstStack[1024] = {0,};
+void kTestTask1() {
+	// while(true);
+	u8 bData;
+	int i = 0, iX = 0, iY = 0, iMargin;
+	Charactor *pstScreen = (Charactor*)CONSOLE_VIDEOMEMORYADDRESS;
+	Task *pstRunningTask;
 
-void kTestTask() {
-	int i = 0;
+	pstRunningTask = kGetRunningTask();
+	iMargin = (pstRunningTask->qwID & 0xFFFFFFFF);
+
 	while(true) {
-		kPrintf("[%d] This Message is from kTestTask. Press any key to switch kConsoleShell~!!\n", i++);
-		kGetCh();
-		kSwitchContext(&gs_vstTask[1].stContext, &gs_vstTask[0].stContext);
+		switch(i) {
+		case 0:
+			iX++;
+			if(iX >= (CONSOLE_WIDTH - iMargin)) i = 1;
+			break;
+		case 1:
+			iY++;
+			if(iY >= (CONSOLE_HEIGHT - iMargin)) i = 2;
+			break;
+		case 2:
+			iX--;
+			if(iX < iMargin) i = 3;
+			break;
+		case 4:
+			iY--;
+			if(iY < iMargin) i = 0;
+			break;
+		}
+
+		pstScreen[iY * CONSOLE_WIDTH + iX] = {
+			.bCharactor = bData,
+			.bAttribute = u8(bData & 0x0F)
+		};
+		bData++;
+
+		kSchedule();
+	}
+}
+
+void kTestTask2() {
+	int i = 0, iOffset;
+	Charactor *pstScreen = (Charactor*) CONSOLE_VIDEOMEMORYADDRESS;
+	Task *pstRunningTask = kGetRunningTask();
+	char vcData[4] = {'-', '\\', '|', '/'};
+	iOffset = (pstRunningTask->qwID & 0xFFFFFFFF) * 2;
+	iOffset = CONSOLE_WIDTH * CONSOLE_HEIGHT - (iOffset % (CONSOLE_WIDTH * CONSOLE_HEIGHT));
+	while(true) {
+		pstScreen[iOffset] = {
+			.bCharactor = u8(vcData[i % 4]),
+			.bAttribute = u8((iOffset % 15) + 1)
+		};
+		kSchedule();
 	}
 }
 
 void kCreateTestTask(const char *pcParameterBuffer) {
-	int i = 0;
-	gs_vstTask[1] = Task(0, u64(kTestTask), &(gs_vstTask[0]), sizeof(gs_vstStack));
+	ParameterList stList(pcParameterBuffer);
+	char vcType[30];
+	char vcCount[30];
+	int i;
 
-	while(true) {
-		kPrintf("[%d] This message is from kConsoleShell. Press any key to switch TestTask~!!\n", i++);
-		if(kGetCh() == 'q') break;
-		kSwitchContext(&gs_vstTask[0].stContext, &gs_vstTask[1].stContext);
+	stList.getNextParameter(vcType);
+	stList.getNextParameter(vcCount);
+
+	switch(kAToI(vcType, 10)) {
+	case 1:
+		for(i = 0; i < kAToI(vcCount, 10); i++)
+			if(kCreateTask(0, u64(kTestTask1)) == nullptr) break;
+		kPrintf("Task1 %d Created\n", i);
+		break;
+	case 2:
+	default:
+		for(i = 0; i < kAToI(vcCount, 10); i++)
+			if(kCreateTask(0, u64(kTestTask2)) == nullptr) break;
+		kPrintf("Task2 %d Created\n", i);
 	}
+	Task *pstRunningTask = kGetNextTaskToRun(), current;
+	kSwitchContext(&current.stContext, &pstRunningTask->stContext);
 }

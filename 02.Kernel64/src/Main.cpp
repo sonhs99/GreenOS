@@ -6,6 +6,8 @@
 #include "Console.hpp"
 #include "ConsoleShell.hpp"
 #include "Utility.hpp"
+#include "Task.hpp"
+#include "PIT.hpp"
 
 extern "C" void Main() {
 	int iCursorX, iCursorY;
@@ -37,6 +39,11 @@ extern "C" void Main() {
 	kCheckTotalRAMSize();
 	kSetCursor(45, iCursorY++);
 	kPrintf("Pass], Size = %d MB \n", kGetTotalRAMSize());
+
+	kPrintf("Task Pool And Scheduler Initialize..........[Pass]\n");
+	iCursorY++;
+	kInitializeScheduler();
+	kInitializePIT(MSTOCOUNT(1), true);
 
 	kPrintf("Keyboard Activate And Queue Initialize......[    ]");
 	kSetCursor(45, iCursorY++);

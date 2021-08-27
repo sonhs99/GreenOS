@@ -13,3 +13,5 @@ struct Charactor {
 };
 
 #pragma pack(pop)
+
+#define assert(X) if(!(X)) while(true)
