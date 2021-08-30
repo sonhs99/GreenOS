@@ -262,7 +262,7 @@ void kTestTask1() {
 		};
 		bData++;
 
-		kSchedule();
+		// kSchedule();
 	}
 }
 
@@ -279,7 +279,7 @@ void kTestTask2() {
 			.bAttribute = u8((iOffset % 15) + 1)
 		};
 		i++;
-		kSchedule();
+		// kSchedule();
 	}
 }
 

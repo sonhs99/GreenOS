@@ -40,6 +40,21 @@
 #define TASK_INVALIDID          0xFFFFFFFFFFFFFFFF
 #define TASK_PROCESSORTIME      5
 
+#define TASK_MAXREADYLISTCOUNT  5
+
+#define TASK_FLAGS_HIGHEST      0
+#define TASK_FLAGS_HIGH         1
+#define TASK_FLAGS_MEDIUM       2
+#define TASK_FLAGS_LOW          3
+#define TASK_FLAGS_WAIT         4
+
+#define TASK_FLAGS_ENDTASK      0x8000000000000000
+#define TASK_FLAGS_IDLE         0x0800000000000000
+
+#define GETPRIORITY(X)              ( (X) & 0xFF )
+#define SETPRIORITY(X, priority)    ( (X) = ( (X) & 0xFFFFFFFFFFFFFF00 ) )
+#define GETTCBOFFSET(X  )           ( (X) = 0xFFFFFFFF )
+
 #pragma pack(push, 1)
 
 struct Context {
@@ -67,7 +82,12 @@ struct TaskPoolManager {
 struct Scheduler {
     Task *pstRunningTask;
     int iProcessorTime;
-    List stReadyList;
+
+    List vstReadyList[TASK_MAXREADYLISTCOUNT];
+    List stWaitList;
+    int viExecuteCount[TASK_MAXREADYLISTCOUNT];
+    u64 qwProcessorLoad;
+    u64 qwSpendProcessorTimeInIdleTask;
 };
 
 #pragma pack(pop)
@@ -80,8 +100,18 @@ void kInitializeScheduler();
 void kSetRunningTask(Task* pstTask);
 Task* kGetRunningTask();
 Task* kGetNextTaskToRun();
-void kAddTaskToReadyList(Task* pstTask);
+bool kAddTaskToReadyList(Task* pstTask);
 void kSchedule();
 bool kScheduleInInterrupt();
 void kDecreaseProcessorTime();
 bool kIsProcessorTimeExpired();
+
+Task* kRemoveTaskFromReadyList(u64 qwTaskID);
+bool kChangePriority(u64 qwID, u8 bPriority);
+bool kEndTask(u64 qwTaskID);
+void kExitTask();
+int  kGetReadyTaskCount();
+int  kGetTaskCount();
+Task* kGetTaskInTCBPool(int iOffset);
+bool kIsTaskExist(u64 qwID);
+u64  kGetProcessorLoad();
