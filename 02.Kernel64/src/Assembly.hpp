@@ -14,4 +14,5 @@ extern "C" {
     u64  kReadFLAGS();
     u64  kReadTSC();
     void kSwitchContext(Context *pstCurrentContext, Context *pstNextContext);
+    void kHlt();
 }

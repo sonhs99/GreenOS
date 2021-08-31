@@ -46,14 +46,15 @@
 #define TASK_FLAGS_HIGH         1
 #define TASK_FLAGS_MEDIUM       2
 #define TASK_FLAGS_LOW          3
-#define TASK_FLAGS_WAIT         4
+#define TASK_FLAGS_LOWEST       4
+#define TASK_FLAGS_WAIT         0xFF
 
 #define TASK_FLAGS_ENDTASK      0x8000000000000000
 #define TASK_FLAGS_IDLE         0x0800000000000000
 
 #define GETPRIORITY(X)              ( (X) & 0xFF )
 #define SETPRIORITY(X, priority)    ( (X) = ( (X) & 0xFFFFFFFFFFFFFF00 ) )
-#define GETTCBOFFSET(X  )           ( (X) = 0xFFFFFFFF )
+#define GETTCBOFFSET(X  )           ( (X) & 0xFFFFFFFF )
 
 #pragma pack(push, 1)
 
@@ -115,3 +116,6 @@ int  kGetTaskCount();
 Task* kGetTaskInTCBPool(int iOffset);
 bool kIsTaskExist(u64 qwID);
 u64  kGetProcessorLoad();
+
+void kIdleTask();
+void kHaltProcessorByLoad();

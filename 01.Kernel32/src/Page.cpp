@@ -14,7 +14,7 @@ void kInitializePageTables() {
     
     PDENTRY* pstPDEntry = (PDENTRY*) 0x102000;
     u32 dwMappingAddress = 0;
-    for(int i = 0; i < PAGE_MAXENTRYCOUNT; i++){
+    for(int i = 0; i < PAGE_MAXENTRYCOUNT * 64; i++){
         pstPDEntry[i].set((i * (PAGE_DEFAULTSIZE >> 20)) >> 12, dwMappingAddress, PAGE_FLAGS_DEFAULT | PAGE_FLAGS_PS, 0);
         dwMappingAddress += PAGE_DEFAULTSIZE;
     }

@@ -61,6 +61,8 @@ extern "C" void Main() {
     kMaskPICInterrupt(0);
     kEnableInterrupt();
     kPrintf("Pass\n");
-
+	
+	kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_IDLE, u64(kIdleTask));
+	// kCreateTask(TASK_FLAGS_HIGHEST, u64(kStartConsoleShell));
 	kStartConsoleShell();
 }

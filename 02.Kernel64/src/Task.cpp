@@ -43,7 +43,7 @@ void kFreeTask(u64 qwID) {
     int i = GETTCBOFFSET(qwID);
 
     kMemSet(&(gs_stTaskPoolManager.pstStartAddress[i].stContext), 0, sizeof(Context));
-    gs_stTaskPoolManager.pstStartAddress->qwID = i;
+    gs_stTaskPoolManager.pstStartAddress[i].qwID = i;
     gs_stTaskPoolManager.iUseCount--;
 }
 
@@ -89,6 +89,7 @@ Context::Context(const Context & n) {
 
 void kInitializeScheduler() {
     kInitializeTaskPool(gs_stTaskPoolManager);
+    for(int i = 0; i < TASK_MAXREADYLISTCOUNT; i++) gs_stScheduler.viExecuteCount[i] = 0;
     gs_stScheduler.pstRunningTask = kAllocateTask();
     gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
 
@@ -121,7 +122,7 @@ Task* kGetNextTaskToRun() {
 }
 
 bool kAddTaskToReadyList(Task *pstTask) {
-    u8 bPriority = GETPRIORITY(pstTask->qwID);
+    u8 bPriority = GETPRIORITY(pstTask->qwFlags);
     if(bPriority >= TASK_MAXREADYLISTCOUNT) return false;
     gs_stScheduler.vstReadyList[bPriority].AddListToTail(pstTask);
     return true;
@@ -138,7 +139,7 @@ Task* kRemoveTaskFromReadyList(u64 qwTaskID) {
     return pstTarget;
 }
 
-bool ChangePriority(u64 qwTaskID, u8 bPriority) {
+bool kChangePriority(u64 qwTaskID, u8 bPriority) {
     if(bPriority > TASK_MAXREADYLISTCOUNT) return false;
 
     Task* pstTarget = gs_stScheduler.pstRunningTask;
@@ -175,6 +176,9 @@ void kSchedule() {
         gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
 
     if(pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK) {
+        gs_stScheduler.stWaitList.AddListToTail(pstRunningTask);
+        kSwitchContext(nullptr, &(pstNextTask->stContext));
+    } else {
         kAddTaskToReadyList(pstRunningTask);
         kSwitchContext(&(pstRunningTask->stContext), &(pstNextTask->stContext));
     }
@@ -188,13 +192,12 @@ bool kScheduleInInterrupt() {
     char *pcContextAddress = (char*)(IST_STARTADDRESS + IST_SIZE - sizeof(Context));
 
     if(pstNextTask == nullptr) return false;
-
     kSetRunningTask(pstNextTask);
 
     if((pstRunningTask->qwFlags & TASK_FLAGS_IDLE) == TASK_FLAGS_IDLE)
         gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME;
-    
-    if(pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK) kAddTaskToReadyList(pstRunningTask);
+
+    if(pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK) gs_stScheduler.stWaitList.AddListToTail(pstRunningTask);
     else {
         kMemCpy(&(pstRunningTask->stContext), pcContextAddress, sizeof(Context));
         kAddTaskToReadyList(pstRunningTask);
@@ -280,7 +283,7 @@ void kIdleTask() {
         if(qwCurrentMeasureTickCount - qwLastMeasureTickCount == 0) gs_stScheduler.qwProcessorLoad = 0;
         else
             gs_stScheduler.qwProcessorLoad = 100 -
-                (qwCurrentSpendTickInIdleTask - qwLastMeasureTickCount) * 100 /
+                (qwCurrentSpendTickInIdleTask - qwLastSpendTickInIdleTask) * 100 /
                 (qwCurrentMeasureTickCount - qwLastMeasureTickCount);
         qwLastMeasureTickCount = qwCurrentMeasureTickCount;
         qwLastSpendTickInIdleTask = qwCurrentSpendTickInIdleTask;

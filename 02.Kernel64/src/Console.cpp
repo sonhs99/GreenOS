@@ -85,7 +85,7 @@ int kConsolePrintString(const char* pcBuffer) {
 u8 kGetCh() {
     KeyData stData;
     while(true) {
-        while(!kGetKeyFromKeyQueue(stData));
+        while(!kGetKeyFromKeyQueue(stData)) kSchedule();
 
         if(stData.bFlags & KEY_FLAGS_DOWN) return stData.bASCIICode;
     }

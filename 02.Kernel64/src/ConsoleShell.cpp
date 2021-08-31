@@ -5,6 +5,7 @@
 #include "PIT.hpp"
 #include "RTC.hpp"
 #include "Assembly.hpp"
+#include "Task.hpp"
 
 static ShellCommandEntry gs_vstCommandTable[] = {
 	{"help", "Show Help", kHelp},
@@ -19,6 +20,10 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"cpuspeed", "Measure Proccessor Speed", kMeasureProcessorSpeed},
 	{"date", "Show Date And Time", kShowDateAndTime},
 	{"createtask", "Create Task, ex)createtask 1(type) 10(count)", kCreateTestTask},
+	{"changepriority", "Change Task Priority, ex)changepriority 1(ID) 2(Priority)", kChangeTaskPriority},
+	{"tasklist", "Show Task List", kShowTaskList},
+	{"killtask", "End Task, ex)killtask i(ID)", kKillTask},
+	{"cpuload", "Show CPU Load", kCPULoad },
 	{"test", "Test features", kTest},
 };
 
@@ -99,7 +104,7 @@ int ParameterList::getNextParameter(char *pcParameter) {
 	return iLength;
 }
 
-void kHelp(const char *pcCommandBuffer) {
+static void kHelp(const char *pcCommandBuffer) {
 	kPrintf("GreenOS Kernel Shell Help\n");
 
 	int iMaxCommandLength = 0;
@@ -117,16 +122,16 @@ void kHelp(const char *pcCommandBuffer) {
 	}
 }
 
-void kCls(const char *pcParameterBuffer) {
+static void kCls(const char *pcParameterBuffer) {
 	kClearScreen();
 	kSetCursor(0, 1);
 }
 
-void kShowTotalRAMSize(const char *pcParameterBuffer) {
+static void kShowTotalRAMSize(const char *pcParameterBuffer) {
 	kPrintf("Total RAM Size = %d MB\n", kGetTotalRAMSize());
 }
 
-void kStringToDecimalHexTest(const char *pcParameterBuffer) {
+static void kStringToDecimalHexTest(const char *pcParameterBuffer) {
 	char vcParameter[100];
 	ParameterList stList(pcParameterBuffer);
 	int iCount = 0;
@@ -148,14 +153,14 @@ void kStringToDecimalHexTest(const char *pcParameterBuffer) {
 	}
 }
 
-void kShutdown(const char *pcParameterBuffer) {
+static void kShutdown(const char *pcParameterBuffer) {
 	kPrintf("System Shutdown Start...\n");
 	kPrintf("Press Any Key To Reboot PC...");
 	kGetCh();
 	kReboot();
 }
 
-void kSetTimer(const char *pcParameterBuffer) {
+static void kSetTimer(const char *pcParameterBuffer) {
 	char vcParameter[100];
 	ParameterList stList(pcParameterBuffer);
 
@@ -175,7 +180,7 @@ void kSetTimer(const char *pcParameterBuffer) {
 	kPrintf("Time = %d ms, Periodic = %d Change Complete\n", lValue, bPeriodic);
 }
 
-void kWaitUsingPIT(const char *pcParameterBuffer) {
+static void kWaitUsingPIT(const char *pcParameterBuffer) {
 	char vcParameter[100];
 	ParameterList stList(pcParameterBuffer);
 
@@ -197,11 +202,11 @@ void kWaitUsingPIT(const char *pcParameterBuffer) {
 	kInitializePIT(MSTOCOUNT(1), true);
 }
 
-void kReadTimeStampCounter(const char *pcParameterBuffer) {
+static void kReadTimeStampCounter(const char *pcParameterBuffer) {
 	kPrintf("Time Stamp Counter = %q\n", kReadTSC());
 }
 
-void kMeasureProcessorSpeed(const char *pcParameterBuffer) {
+static void kMeasureProcessorSpeed(const char *pcParameterBuffer) {
 	kPrintf("Now Measuring.");
 	
 	kDisableInterrupt();
@@ -217,7 +222,7 @@ void kMeasureProcessorSpeed(const char *pcParameterBuffer) {
 	kPrintf("\nCPU Speed = %d MHz\n", qwTotalTSC / 10 / 1000 / 1000);
 }
 
-void kShowDateAndTime(const char *pcParameterBuffer) {
+static void kShowDateAndTime(const char *pcParameterBuffer) {
 	u8 bSecond, bMinute, bHour;
 	u8 bDayOfWeek, bDayOfMonth, bMonth;
 	u16 wYear;
@@ -229,14 +234,14 @@ void kShowDateAndTime(const char *pcParameterBuffer) {
 	kPrintf("Time: %d:%d:%d\n", bHour, bMinute, bSecond);
 }
 
-void kTestTask1() {
+static void kTestTask1() {
 	u8 bData;
 	int i = 0, iX = 0, iY = 0, iMargin;
 	Charactor *pstScreen = (Charactor*)CONSOLE_VIDEOMEMORYADDRESS;
 	Task *pstRunningTask = kGetRunningTask();
 	iMargin = (pstRunningTask->qwID & 0xFFFFFFFF) % 10 + 1;
 
-	while(true) {
+	for(int j = 0; j < 20000; j++) {
 		switch(i) {
 		case 0:
 			iX++;
@@ -264,9 +269,10 @@ void kTestTask1() {
 
 		// kSchedule();
 	}
+	kExitTask();
 }
 
-void kTestTask2() {
+static void kTestTask2() {
 	int i = 0, iOffset;
 	Charactor *pstScreen = (Charactor*) CONSOLE_VIDEOMEMORYADDRESS;
 	Task *pstRunningTask = kGetRunningTask();
@@ -283,7 +289,7 @@ void kTestTask2() {
 	}
 }
 
-void kCreateTestTask(const char *pcParameterBuffer) {
+static void kCreateTestTask(const char *pcParameterBuffer) {
 	ParameterList stList(pcParameterBuffer);
 	char vcType[30];
 	char vcCount[30];
@@ -295,20 +301,70 @@ void kCreateTestTask(const char *pcParameterBuffer) {
 	switch(kAToI(vcType, 10)) {
 	case 1:
 		for(i = 0; i < kAToI(vcCount, 10); i++)
-			if(kCreateTask(0, u64(kTestTask1)) == nullptr) break;
+			if(kCreateTask(TASK_FLAGS_LOW, u64(kTestTask1)) == nullptr) break;
 		kPrintf("Task1 %d Created\n", i);
 		break;
 	case 2:
 	default:
 		for(i = 0; i < kAToI(vcCount, 10); i++)
-			if(kCreateTask(0, u64(kTestTask2)) == nullptr) break;
+			if(kCreateTask(TASK_FLAGS_LOW, u64(kTestTask2)) == nullptr) break;
 		kPrintf("Task2 %d Created\n", i);
 	}
 }
 
-void kTest(const char *pcParameterBuffer) {
+static void kTest(const char *pcParameterBuffer) {
 	Task *pstStartAddress = (Task*) TASK_TCBPOOLADDRESS;
 	for (int i = 0; i < 10; i++)
 		kPrintf("%p\n", pstStartAddress[i].qwID);
 	kPrintf("Test Completed.\n");
+}
+
+static void kChangeTaskPriority(const char *pcParameterBuffer) {
+	ParameterList stList(pcParameterBuffer);
+	char vcID[30];
+	char vcPriority[30];
+
+	stList.getNextParameter(vcID);
+	stList.getNextParameter(vcPriority);
+
+	u64 qwID = (kMemCmp(vcID, "0x", 2) == 0) ? kAToI(vcID + 2, 16) : kAToI(vcID, 10);
+	u8 bPriority = kAToI(vcPriority, 10);
+
+	kPrintf("Change Task Priority ID [0x%q] Priority[%d]", qwID, bPriority);
+	if(kChangePriority(qwID, bPriority)) kPrintf("Success\n");
+	else kPrintf("Fail\n");
+}
+
+static void kShowTaskList(const char *pcParameterBuffer) {
+	Task* pstTask;
+	int iCount = 0;
+	for(int i = 0; i < TASK_MAXCOUNT; i++) {
+		pstTask = kGetTaskInTCBPool(i);
+		if(pstTask->qwID >> 32 != 0){
+			if((iCount != 0) && ((iCount % 10) == 0)) {
+				kPrintf("Press any key to continue... ('q' is exit) : ");
+				if(kGetCh() == 'q') {
+					kPrintf("\n");
+					break;
+				}
+				kPrintf("\n");
+			}
+			kPrintf("[%d] Task ID[0x%q], Priority[%d], Flags[0x%q]\n", 1 + iCount++, pstTask->qwID, GETPRIORITY(pstTask->qwFlags), pstTask->qwFlags);
+		}
+	}
+}
+
+static void kKillTask(const char *pcParameterBuffer) {
+	ParameterList stList(pcParameterBuffer);
+	char vcID[30];
+	stList.getNextParameter(vcID);
+	
+	u64 qwID = (kMemCmp(vcID, "0x", 2) == 0) ? kAToI(vcID + 2, 16) : kAToI(vcID, 10);
+	kPrintf("Kill Task ID [0x%q] ", qwID);
+	if(kEndTask(qwID)) kPrintf("Success\n");
+	else kPrintf("Fail\n");
+}
+
+static void kCPULoad(const char *pcParameterBuffer) {
+	kPrintf("Processor Load : %d%%\n", kGetProcessorLoad());
 }
