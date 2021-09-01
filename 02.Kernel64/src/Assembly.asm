@@ -6,6 +6,7 @@ global kEnableInterrupt, kDisableInterrupt, kReadFLAGS
 global kReadTSC
 global kSwitchContext
 global kHlt
+global kTestAndSet
 
 kInPortByte:
     push rdx
@@ -166,4 +167,18 @@ kSwitchContext:
 kHlt:
     hlt
     hlt
+    ret
+
+kTestAndSet:
+    mov rax, rsi
+
+    lock cmpxchg byte[rdi], dl
+    je .SUCCESS
+
+.NOTSAME:
+    mov rax, 0x00
+    ret
+
+.SUCCESS:
+    mov rax, 0x01
     ret

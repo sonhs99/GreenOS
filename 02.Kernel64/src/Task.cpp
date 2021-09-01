@@ -3,6 +3,7 @@
 #include "Utility.hpp"
 #include "Assembly.hpp"
 #include "Console.hpp"
+#include "Sync.hpp"
 
 static Scheduler gs_stScheduler;
 static TaskPoolManager gs_stTaskPoolManager;
@@ -48,13 +49,21 @@ void kFreeTask(u64 qwID) {
 }
 
 Task* kCreateTask(u64 qwFlags, u64 qwEntryPointAddress) {
+    bool bPreviousFlag = kLockForSystemData();
     Task *pstTask = kAllocateTask();
-    if(pstTask == nullptr) return nullptr;
+    if(pstTask == nullptr) {
+        kUnlockForSystemData(bPreviousFlag);
+        return nullptr;
+    }
+    kUnlockForSystemData(bPreviousFlag);
 
 	void *pvStackAddress = (void *)(TASK_STACKPOOLADDRESS + (TASK_STACKSIZE * GETTCBOFFSET(pstTask->qwID)));
     *pstTask = Task(pstTask->qwID, qwFlags, qwEntryPointAddress, pvStackAddress, TASK_STACKSIZE);
 
+    bPreviousFlag = kLockForSystemData();
     kAddTaskToReadyList(pstTask);
+    kUnlockForSystemData(bPreviousFlag);
+
     return pstTask;
 }
 
@@ -98,11 +107,16 @@ void kInitializeScheduler() {
 }
 
 void kSetRunningTask(Task *pstTask) {
+    bool bPreviousFlag = kLockForSystemData();
     gs_stScheduler.pstRunningTask = pstTask;
+    kUnlockForSystemData(bPreviousFlag);
 }
 
 Task* kGetRunningTask() {
-    return gs_stScheduler.pstRunningTask;
+    bool bPreviousFlag = kLockForSystemData();
+    Task* pstTask = gs_stScheduler.pstRunningTask;
+    kUnlockForSystemData(bPreviousFlag);
+    return pstTask;
 }
 
 Task* kGetNextTaskToRun() {
@@ -142,6 +156,7 @@ Task* kRemoveTaskFromReadyList(u64 qwTaskID) {
 bool kChangePriority(u64 qwTaskID, u8 bPriority) {
     if(bPriority > TASK_MAXREADYLISTCOUNT) return false;
 
+    bool bPreviousFlag = kLockForSystemData();
     Task* pstTarget = gs_stScheduler.pstRunningTask;
     if(pstTarget->qwID == qwTaskID) SETPRIORITY(pstTarget->qwFlags, bPriority);
     else {
@@ -154,22 +169,20 @@ bool kChangePriority(u64 qwTaskID, u8 bPriority) {
             kAddTaskToReadyList(pstTarget);
         }
     }
+    kUnlockForSystemData(bPreviousFlag);
     return true;
 }
 
 void kSchedule() {
-    Task* pstRunningTask, *pstNextTask;
-    bool bPreviousFlag;
-
     if(kGetReadyTaskCount() < 1) return;
 
-    bPreviousFlag = kSetInterruptFlag(false);
-    pstNextTask = kGetNextTaskToRun();
+    bool bPreviousFlag = kLockForSystemData();
+    Task* pstNextTask = kGetNextTaskToRun();
     if(pstNextTask == nullptr){
         kSetInterruptFlag(bPreviousFlag);
         return;
     }
-    pstRunningTask = kGetRunningTask();
+    Task* pstRunningTask = kGetRunningTask();
     kSetRunningTask(pstNextTask);
 
     if((pstRunningTask->qwFlags & TASK_FLAGS_IDLE) == TASK_FLAGS_IDLE)
@@ -184,14 +197,18 @@ void kSchedule() {
     }
 
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
-    kSetInterruptFlag(bPreviousFlag);
+    kUnlockForSystemData(bPreviousFlag);
 }
 
 bool kScheduleInInterrupt() {
+    bool bPreviousFlag = kLockForSystemData();
     Task *pstRunningTask = kGetRunningTask(), *pstNextTask = kGetNextTaskToRun();
     char *pcContextAddress = (char*)(IST_STARTADDRESS + IST_SIZE - sizeof(Context));
 
-    if(pstNextTask == nullptr) return false;
+    if(pstNextTask == nullptr) {
+        kUnlockForSystemData(bPreviousFlag);
+        return false;
+    }
     kSetRunningTask(pstNextTask);
 
     if((pstRunningTask->qwFlags & TASK_FLAGS_IDLE) == TASK_FLAGS_IDLE)
@@ -202,6 +219,7 @@ bool kScheduleInInterrupt() {
         kMemCpy(&(pstRunningTask->stContext), pcContextAddress, sizeof(Context));
         kAddTaskToReadyList(pstRunningTask);
     }
+    kUnlockForSystemData(bPreviousFlag);
     kMemCpy(pcContextAddress, &(pstNextTask->stContext), sizeof(Context));
 
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
@@ -217,10 +235,12 @@ bool kIsProcessorTimeExpired() {
 }
 
 bool kEndTask(u64 qwTaskID) {
+    bool bPreviousFlag = kLockForSystemData();
     Task* pstTarget = gs_stScheduler.pstRunningTask;
     if(pstTarget->qwID == qwTaskID) {
         pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
         SETPRIORITY(pstTarget->qwFlags, TASK_FLAGS_WAIT);
+        kUnlockForSystemData(bPreviousFlag);
         kSchedule();
         while(true);
     } else {
@@ -231,12 +251,14 @@ bool kEndTask(u64 qwTaskID) {
                 pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
                 SETPRIORITY(pstTarget->qwFlags, TASK_FLAGS_WAIT);
             }
+            kUnlockForSystemData(bPreviousFlag);
             return false;
         }
         pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
         SETPRIORITY(pstTarget->qwFlags, TASK_FLAGS_ENDTASK);
         gs_stScheduler.stWaitList.AddListToTail(pstTarget);
     }
+    kUnlockForSystemData(bPreviousFlag);
     return true;
 }
 
@@ -246,14 +268,18 @@ void kExitTask(){
 
 int kGetReadyTaskCount() {
     int iTotalCount = 0;
+    bool bPreviousFlag = kLockForSystemData();
     for(auto & stList: gs_stScheduler.vstReadyList)
         iTotalCount += stList.ItemCount();
+    kUnlockForSystemData(bPreviousFlag);
     return iTotalCount;
 }
 
 int kGetTaskCount() {
     int iTotalCount = kGetReadyTaskCount();
+    bool bPreviousFlag = kLockForSystemData();
     iTotalCount += gs_stScheduler.stWaitList.ItemCount();
+    kUnlockForSystemData(bPreviousFlag);
     return iTotalCount;
 }
 
@@ -291,10 +317,16 @@ void kIdleTask() {
         kHaltProcessorByLoad();
         if(gs_stScheduler.stWaitList.ItemCount() >= 0)
             while(true) {
+                bool bPreviousFlag = kLockForSystemData();
                 Task *pstTask = (Task*)gs_stScheduler.stWaitList.RemoveListFromHead();
-                if(pstTask == nullptr) break;
-                kPrintf("IDLE: Task ID[0x%q] is Completely ended.\n", pstTask->qwID);
-                kFreeTask(pstTask->qwID);
+                if(pstTask == nullptr) {
+                    kUnlockForSystemData(bPreviousFlag);
+                    break;
+                }
+                u64 qwTaskID = pstTask->qwID;
+                kFreeTask(qwTaskID);
+                kUnlockForSystemData(bPreviousFlag);
+                kPrintf("IDLE: Task ID[0x%q] is Completely ended.\n", qwTaskID);
             }
 
         kSchedule();

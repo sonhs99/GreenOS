@@ -15,4 +15,5 @@ extern "C" {
     u64  kReadTSC();
     void kSwitchContext(Context *pstCurrentContext, Context *pstNextContext);
     void kHlt();
+    bool kTestAndSet(volatile u8 *pbDestination, u8 bCompaere, u8 bSource);
 }

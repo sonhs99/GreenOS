@@ -3,6 +3,7 @@
 #include "Assembly.hpp"
 #include "Queue.hpp"
 #include "Utility.hpp"
+#include "Sync.hpp"
 
 bool kIsOutputBufferFull() {
     if(kInPortByte(0x64) & 0x01) return true;
@@ -312,17 +313,17 @@ bool kConvertScanCodeAndPutQueue(u8 bScanCode) {
 
     stData.bScanCode = bScanCode;
     if(kConvertScanCodeToASCIICode(bScanCode, stData.bASCIICode, stData.bFlags)) {
-        bool bPreviousInterrupt = kSetInterruptFlag(false);
+        bool bPreviousInterrupt = kLockForSystemData();
         bResult = gs_stQueue.Enqueue(stData);
-        kSetInterruptFlag(bPreviousInterrupt);
+        kUnlockForSystemData(bPreviousInterrupt);
     }
     return bResult;
 }
 
 bool kGetKeyFromKeyQueue(KeyData& pstData) {
     if(gs_stQueue.isEmpty()) return false;
-    bool bPreviousInterrupt = kSetInterruptFlag(false);
+    bool bPreviousInterrupt = kLockForSystemData();
     bool bResult = gs_stQueue.Dequeue(pstData);
-    kSetInterruptFlag(bPreviousInterrupt);
+    kUnlockForSystemData(bPreviousInterrupt);
     return bResult;
 }

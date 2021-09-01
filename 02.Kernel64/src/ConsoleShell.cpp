@@ -6,6 +6,7 @@
 #include "RTC.hpp"
 #include "Assembly.hpp"
 #include "Task.hpp"
+#include "Sync.hpp"
 
 static ShellCommandEntry gs_vstCommandTable[] = {
 	{"help", "Show Help", kHelp},
@@ -23,7 +24,8 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"changepriority", "Change Task Priority, ex)changepriority 1(ID) 2(Priority)", kChangeTaskPriority},
 	{"tasklist", "Show Task List", kShowTaskList},
 	{"killtask", "End Task, ex)killtask i(ID)", kKillTask},
-	{"cpuload", "Show CPU Load", kCPULoad },
+	{"cpuload", "Show CPU Load", kCPULoad},
+	{"testmutex", "Test Mutex Function", kTestMutex},
 	{"test", "Test features", kTest},
 };
 
@@ -360,11 +362,51 @@ static void kKillTask(const char *pcParameterBuffer) {
 	stList.getNextParameter(vcID);
 	
 	u64 qwID = (kMemCmp(vcID, "0x", 2) == 0) ? kAToI(vcID + 2, 16) : kAToI(vcID, 10);
-	kPrintf("Kill Task ID [0x%q] ", qwID);
-	if(kEndTask(qwID)) kPrintf("Success\n");
-	else kPrintf("Fail\n");
+	if(qwID != 0xFFFFFFFF) {
+		kPrintf("Kill Task ID [0x%q] ", qwID);
+		if(kEndTask(qwID)) kPrintf("Success\n");
+		else kPrintf("Fail\n");
+	} else {
+		for(int i = 2; i < TASK_MAXCOUNT; i++) {
+			Task* pstTask = kGetTaskInTCBPool(i);
+			qwID = pstTask->qwID;
+			if((qwID >> 32) != 0) {
+				kPrintf("Kill Task ID [0x%q] ", qwID);
+				if(kEndTask(qwID)) kPrintf("Success\n");
+				else kPrintf("Fail\n");
+			}
+		}
+	}
 }
 
 static void kCPULoad(const char *pcParameterBuffer) {
 	kPrintf("Processor Load : %d%%\n", kGetProcessorLoad());
+}
+
+static Mutex gs_stMutex;
+static volatile u64 gs_qwAdder;
+
+static void kPrintNumberTask() {
+	u64 qwTickCount = kGetTickCount();
+	while((kGetTickCount() - qwTickCount) < 50) kSchedule();
+	for(int i = 0; i < 5; i++){
+		gs_stMutex.lock();
+		kPrintf("Task ID [0x%q] Value[%d]\n", kGetRunningTask()->qwID, gs_qwAdder);
+		gs_qwAdder += 1;
+		gs_stMutex.unlock();
+		for(int j = 0; j < 30000; j++);
+	}
+	qwTickCount = kGetTickCount();
+	while((kGetTickCount() - qwTickCount) < 1000) kSchedule();
+	kExitTask();
+}
+
+static void kTestMutex(const char *pcParameterBuffer) {
+	gs_qwAdder = 1;
+	gs_stMutex = Mutex();
+	int i;
+	for(i = 0; i < 3; i++) 
+		kCreateTask(TASK_FLAGS_LOW, u64(kPrintNumberTask));
+	kPrintf("Wait Until %d Task End\n", i);
+	kGetCh();
 }
