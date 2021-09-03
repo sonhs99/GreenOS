@@ -50,11 +50,15 @@
 #define TASK_FLAGS_WAIT         0xFF
 
 #define TASK_FLAGS_ENDTASK      0x8000000000000000
+#define TASK_FLAGS_SYSTEM       0x4000000000000000
+#define TASK_FLAGS_PROCESS      0x2000000000000000
+#define TASK_FLAGS_THREAD       0x1000000000000000
 #define TASK_FLAGS_IDLE         0x0800000000000000
 
 #define GETPRIORITY(X)              ( (X) & 0xFF )
 #define SETPRIORITY(X, priority)    ( (X) = ( (X) & 0xFFFFFFFFFFFFFF00 ) )
-#define GETTCBOFFSET(X  )           ( (X) & 0xFFFFFFFF )
+#define GETTCBOFFSET(X)             ( (X) & 0xFFFFFFFF )
+#define GETTCBFROMTHREADLINK(X)     (Task*) (u64(X) - offsetof(Task, stThreadLink))
 
 #pragma pack(push, 1)
 
@@ -66,11 +70,24 @@ struct Context {
 
 struct Task : public ListNode {
     u64     qwFlags;
+
+    void   *pvMemoryAddress;
+    u64     qwMemorySize;
+
+    ListNode stThreadLink;
+    List    stChildThreadList;
+
+    u64     qwParentProcessID;
+
     Context stContext;
     
     void    *pvStackAddress;
     u64     qwStackSize;
-    Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
+    Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
+        set(qwFlags, qwEntryPointAddress, pvStackAddress, qwStackSize);
+        this->qwID = qwID;
+    }
+    void set(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize);
 };
 
 struct TaskPoolManager {
@@ -95,7 +112,7 @@ struct Scheduler {
 
 Task* kAllocateTask();
 void kFreeTask(u64 qwID);
-Task* kCreateTask(u64 qwFlags, u64 qwEntryPointAddress);
+Task* kCreateTask(u64 qwFlags, void* pvMemoryAddress, u64 qwMemorySize, u64 qwEntryPointAddress);
 
 void kInitializeScheduler();
 void kSetRunningTask(Task* pstTask);
@@ -119,3 +136,4 @@ u64  kGetProcessorLoad();
 
 void kIdleTask();
 void kHaltProcessorByLoad();
+Task* kGetProcessByThread(Task* pstThread);

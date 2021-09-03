@@ -48,17 +48,35 @@ void kFreeTask(u64 qwID) {
     gs_stTaskPoolManager.iUseCount--;
 }
 
-Task* kCreateTask(u64 qwFlags, u64 qwEntryPointAddress) {
+Task* kCreateTask(u64 qwFlags, void* pvMemoryAddress, u64 qwMemorySize, u64 qwEntryPointAddress) {
     bool bPreviousFlag = kLockForSystemData();
     Task *pstTask = kAllocateTask();
     if(pstTask == nullptr) {
         kUnlockForSystemData(bPreviousFlag);
         return nullptr;
     }
+    Task *pstProcess = kGetProcessByThread(kGetRunningTask());
+    if(pstProcess == nullptr){
+        kFreeTask(pstTask->qwID);
+        kUnlockForSystemData(bPreviousFlag);
+        return nullptr;
+    }
+    if(qwFlags & TASK_FLAGS_THREAD) {
+        pstTask->qwParentProcessID = pstProcess->qwID;
+        pstTask->pvMemoryAddress = pstProcess->pvMemoryAddress;
+        pstTask->qwMemorySize = pstProcess->qwMemorySize;
+        pstProcess->stChildThreadList.AddListToTail(pstTask);
+    } else {
+        pstTask->qwParentProcessID = pstProcess->qwID;
+        pstTask->pvMemoryAddress = pvMemoryAddress;
+        pstTask->qwMemorySize = qwMemorySize;
+    }
+    pstTask->stThreadLink.qwID = pstTask->qwID;
     kUnlockForSystemData(bPreviousFlag);
 
 	void *pvStackAddress = (void *)(TASK_STACKPOOLADDRESS + (TASK_STACKSIZE * GETTCBOFFSET(pstTask->qwID)));
-    *pstTask = Task(pstTask->qwID, qwFlags, qwEntryPointAddress, pvStackAddress, TASK_STACKSIZE);
+    pstTask->set(qwFlags, qwEntryPointAddress, pvStackAddress, TASK_STACKSIZE);
+    pstTask->stChildThreadList = List();
 
     bPreviousFlag = kLockForSystemData();
     kAddTaskToReadyList(pstTask);
@@ -67,9 +85,11 @@ Task* kCreateTask(u64 qwFlags, u64 qwEntryPointAddress) {
     return pstTask;
 }
 
-Task::Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
-    stContext.vqRegister[TASK_RSPOFFSET] = u64(pvStackAddress) + qwStackSize;
-    stContext.vqRegister[TASK_RBPOFFSET] = u64(pvStackAddress) + qwStackSize;
+void Task::set(u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
+    stContext.vqRegister[TASK_RSPOFFSET] = u64(pvStackAddress) + qwStackSize - 8;
+    stContext.vqRegister[TASK_RBPOFFSET] = u64(pvStackAddress) + qwStackSize - 8;
+
+    *(u64*)(u64(pvStackAddress + qwStackSize - 8)) = u64(kExitTask);
 
     stContext.vqRegister[TASK_CSOFFSET] = GDT_KERNELCODESEGMENT;
     stContext.vqRegister[TASK_DSOFFSET] = GDT_KERNELDATASEGMENT;
@@ -82,7 +102,6 @@ Task::Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress,
 
     stContext.vqRegister[TASK_RFLAGOFFSET] |= 0x0200;
 
-	this->qwID = qwID;
     this->pvStackAddress = pvStackAddress;
     this->qwStackSize = qwStackSize;
     this->qwFlags = qwFlags;
@@ -99,11 +118,25 @@ Context::Context(const Context & n) {
 void kInitializeScheduler() {
     kInitializeTaskPool(gs_stTaskPoolManager);
     for(int i = 0; i < TASK_MAXREADYLISTCOUNT; i++) gs_stScheduler.viExecuteCount[i] = 0;
-    gs_stScheduler.pstRunningTask = kAllocateTask();
-    gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
+
+    Task *pstTask = kAllocateTask();
+    gs_stScheduler.pstRunningTask = pstTask;
+    pstTask->qwFlags = TASK_FLAGS_HIGHEST | TASK_FLAGS_PROCESS | TASK_FLAGS_SYSTEM;
+    pstTask->qwParentProcessID = pstTask->qwID;
+    pstTask->pvMemoryAddress = (void*) 0x100000;
+    pstTask->qwMemorySize = 0x500000;
+    pstTask->qwStackSize = 0x100000;
 
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
+}
+
+Task* kGetProcessByThread(Task *pstThread) {
+    if(pstThread->qwFlags & TASK_FLAGS_PROCESS) return pstThread;
+    Task* pstProcess = kGetTaskInTCBPool(GETTCBOFFSET(pstThread->qwParentProcessID));
+    if((pstProcess == nullptr) || (pstProcess->qwID != pstProcess->qwParentProcessID))
+        return nullptr;
+    return pstProcess;
 }
 
 void kSetRunningTask(Task *pstTask) {
@@ -322,6 +355,26 @@ void kIdleTask() {
                 if(pstTask == nullptr) {
                     kUnlockForSystemData(bPreviousFlag);
                     break;
+                }
+                if(pstTask->qwFlags & TASK_FLAGS_PROCESS) {
+                    int iCount = pstTask->stChildThreadList.ItemCount();
+                    for(int i = 0; i < iCount; i++) {
+                        ListNode *pstThreadLink = pstTask->stChildThreadList.RemoveListFromHead();
+                        if(pstThreadLink == nullptr) break;
+                        Task *pstThread = GETTCBFROMTHREADLINK(pstThreadLink);
+                        pstTask->stChildThreadList.AddListToTail(&(pstThread->stThreadLink));
+                        kEndTask(pstThread->qwID);
+                    }
+                    if(pstTask->stChildThreadList.ItemCount() > 0) {
+                        gs_stScheduler.stWaitList.AddListToTail(pstTask);
+                        kUnlockForSystemData(bPreviousFlag);
+                        continue;
+                    } else { /* To Do */ }
+                }
+                else if(pstTask->qwFlags & TASK_FLAGS_THREAD) {
+                    Task *pstProcess = kGetProcessByThread(pstTask);
+                    if(pstProcess != nullptr)
+                        pstProcess->stChildThreadList.Remove(pstTask->qwID);
                 }
                 u64 qwTaskID = pstTask->qwID;
                 kFreeTask(qwTaskID);

@@ -221,3 +221,9 @@ int kVSPrintf(char *pcBuffer, const char* pcFormatString, va_list ap) {
 u64 kGetTickCount() {
 	return g_qwTickCount;
 }
+
+void kSleep(u64 qwMilliSecond) {
+	u64 qwLastTickCount = g_qwTickCount;
+	while((g_qwTickCount - qwLastTickCount) <= qwMilliSecond)
+		kSchedule();
+}

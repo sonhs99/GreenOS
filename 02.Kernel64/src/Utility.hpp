@@ -24,3 +24,4 @@ int	 kDecimalToString(long lValue, char* pcBuffer);
 int	 kSPrintf(char *pcBuffer, const char *pcFormatString, ...);
 int	 kVSPrintf(char *pcBuffer, const char* pcFormatString, va_list ap);
 u64 kGetTickCount();
+void kSleep(u64 qwMilliSecond);
