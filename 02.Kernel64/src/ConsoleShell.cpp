@@ -505,8 +505,8 @@ static void kFPUTestTask() {
 
 static void kTestPIE(const char *pcParameterBuffer) {
 	kPrintf("PIE Calculation Test\n");
-	kPrintf("Result: 335 / 133 = ");
-	double dResult = double(335.0/113.0);
+	kPrintf("Result: 355 / 133 = ");
+	double dResult = double(355.0/113.0);
 	kPrintf("%d.%d%d\n", u64(dResult), u64(dResult * 10) % 10, u64(dResult * 100) % 10);
 	for(int i = 0; i < 100; i++)
 		kCreateTask(TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, u64(kFPUTestTask));

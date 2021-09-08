@@ -50,4 +50,4 @@ static void kTestMutex(const char *pcParameterBuffer);
 static void kTestThread(const char *pcParameterBuffer);
 static void kShowMatrix(const char *pcParameterBuffer);
 
-static void kTestPIE(const char *pcdParameterBuffer);
+static void kTestPIE(const char *pcParameterBuffer);
