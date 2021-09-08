@@ -16,4 +16,9 @@ extern "C" {
     void kSwitchContext(Context *pstCurrentContext, Context *pstNextContext);
     void kHlt();
     bool kTestAndSet(volatile u8 *pbDestination, u8 bCompaere, u8 bSource);
+    void kInitializeFPU();
+    void kSaveFPUContext(void *pvFPUContext);
+    void kLoadFPUContext(void *pvFPUContext);
+    void kSetTS();
+    void kClearTS();
 }

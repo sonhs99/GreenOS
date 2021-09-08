@@ -40,7 +40,6 @@ static void kReadTimeStampCounter(const char *pcParameterBuffer);
 static void kMeasureProcessorSpeed(const char *pcParameterBuffer);
 static void kShowDateAndTime(const char *pcParameterBuffer);
 static void kCreateTestTask(const char *pcParameterBuffer);
-static void kTest(const char *pcParameterBuffer);
 
 static void kChangeTaskPriority(const char *pcParameterBuffer);
 static void kShowTaskList(const char *pcParameterBuffer);
@@ -49,3 +48,6 @@ static void kCPULoad(const char *pcParameterBuffer);
 
 static void kTestMutex(const char *pcParameterBuffer);
 static void kTestThread(const char *pcParameterBuffer);
+static void kShowMatrix(const char *pcParameterBuffer);
+
+static void kTestPIE(const char *pcdParameterBuffer);

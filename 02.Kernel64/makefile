@@ -50,6 +50,7 @@ InternalDependency:
 
 Kernel64.elf: $(ENTRYPOINTOBJFILE) $(COBJFILES) $(ASSEMBLYOBJFILES)
 	$(LD64) -o $@ $^
+	objdump -d $@ > dump.txt
 
 ifeq (Dependency.dep, $(wildcard Dependancy.dep))
 include Dependency.dep

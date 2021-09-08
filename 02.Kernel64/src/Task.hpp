@@ -75,14 +75,20 @@ struct Task : public ListNode {
     u64     qwMemorySize;
 
     ListNode stThreadLink;
-    List    stChildThreadList;
 
     u64     qwParentProcessID;
 
+    u64     vqwFPUContext[512/8];
+    List    stChildThreadList;
+
     Context stContext;
-    
     void    *pvStackAddress;
     u64     qwStackSize;
+
+    bool    bFPUUsed;
+    
+    u8      vcPadding[11];
+
     Task(u64 qwID, u64 qwFlags, u64 qwEntryPointAddress, void* pvStackAddress, u64 qwStackSize) {
         set(qwFlags, qwEntryPointAddress, pvStackAddress, qwStackSize);
         this->qwID = qwID;
@@ -106,6 +112,7 @@ struct Scheduler {
     int viExecuteCount[TASK_MAXREADYLISTCOUNT];
     u64 qwProcessorLoad;
     u64 qwSpendProcessorTimeInIdleTask;
+    u64 qwLastFPUUsedTaskID;
 };
 
 #pragma pack(pop)
@@ -137,3 +144,6 @@ u64  kGetProcessorLoad();
 void kIdleTask();
 void kHaltProcessorByLoad();
 Task* kGetProcessByThread(Task* pstThread);
+
+u64  kGetLastFPUUsedTaskID();
+void kSetLastFPUUsedTaskID(u64 qwTaskID);

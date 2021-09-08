@@ -7,4 +7,5 @@ extern "C" {
     void kCommonInterruptHandler(int iVectorNumber);
     void kKeyboardHandler(int iVectorNumber);
     void kTimerHandler(int iVectorNumber);
+    void kDeviceNotAvailableHandler(int iVectorNumber);
 }

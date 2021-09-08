@@ -65,7 +65,7 @@ Task* kCreateTask(u64 qwFlags, void* pvMemoryAddress, u64 qwMemorySize, u64 qwEn
         pstTask->qwParentProcessID = pstProcess->qwID;
         pstTask->pvMemoryAddress = pstProcess->pvMemoryAddress;
         pstTask->qwMemorySize = pstProcess->qwMemorySize;
-        pstProcess->stChildThreadList.AddListToTail(pstTask);
+        pstProcess->stChildThreadList.AddListToTail(&(pstTask->stThreadLink));
     } else {
         pstTask->qwParentProcessID = pstProcess->qwID;
         pstTask->pvMemoryAddress = pvMemoryAddress;
@@ -77,6 +77,8 @@ Task* kCreateTask(u64 qwFlags, void* pvMemoryAddress, u64 qwMemorySize, u64 qwEn
 	void *pvStackAddress = (void *)(TASK_STACKPOOLADDRESS + (TASK_STACKSIZE * GETTCBOFFSET(pstTask->qwID)));
     pstTask->set(qwFlags, qwEntryPointAddress, pvStackAddress, TASK_STACKSIZE);
     pstTask->stChildThreadList = List();
+
+    pstTask->bFPUUsed = false;
 
     bPreviousFlag = kLockForSystemData();
     kAddTaskToReadyList(pstTask);
@@ -129,12 +131,14 @@ void kInitializeScheduler() {
 
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
+
+    gs_stScheduler.qwLastFPUUsedTaskID = TASK_INVALIDID;
 }
 
 Task* kGetProcessByThread(Task *pstThread) {
     if(pstThread->qwFlags & TASK_FLAGS_PROCESS) return pstThread;
     Task* pstProcess = kGetTaskInTCBPool(GETTCBOFFSET(pstThread->qwParentProcessID));
-    if((pstProcess == nullptr) || (pstProcess->qwID != pstProcess->qwParentProcessID))
+    if((pstProcess == nullptr) || (pstProcess->qwID != pstThread->qwParentProcessID))
         return nullptr;
     return pstProcess;
 }
@@ -220,6 +224,8 @@ void kSchedule() {
 
     if((pstRunningTask->qwFlags & TASK_FLAGS_IDLE) == TASK_FLAGS_IDLE)
         gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
+    if(gs_stScheduler.qwLastFPUUsedTaskID != pstNextTask->qwID) kSetTS();
+    else kClearTS();
 
     if(pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK) {
         gs_stScheduler.stWaitList.AddListToTail(pstRunningTask);
@@ -253,6 +259,10 @@ bool kScheduleInInterrupt() {
         kAddTaskToReadyList(pstRunningTask);
     }
     kUnlockForSystemData(bPreviousFlag);
+    if(gs_stScheduler.qwLastFPUUsedTaskID != pstNextTask->qwID)
+        kSetTS();
+    else kClearTS();
+
     kMemCpy(pcContextAddress, &(pstNextTask->stContext), sizeof(Context));
 
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
@@ -285,7 +295,7 @@ bool kEndTask(u64 qwTaskID) {
                 SETPRIORITY(pstTarget->qwFlags, TASK_FLAGS_WAIT);
             }
             kUnlockForSystemData(bPreviousFlag);
-            return false;
+            return true;
         }
         pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
         SETPRIORITY(pstTarget->qwFlags, TASK_FLAGS_ENDTASK);
@@ -397,4 +407,12 @@ void kHaltProcessorByLoad() {
     } else if(gs_stScheduler.qwProcessorLoad < 95) {
         kHlt();
     }
+}
+
+u64 kGetLastFPUUsedTaskID() {
+    return gs_stScheduler.qwLastFPUUsedTaskID;
+}
+
+void kSetLastFPUUsedTaskID(u64 qwTaskID) {
+    gs_stScheduler.qwLastFPUUsedTaskID = qwTaskID;
 }
