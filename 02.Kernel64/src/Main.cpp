@@ -8,6 +8,7 @@
 #include "Utility.hpp"
 #include "Task.hpp"
 #include "PIT.hpp"
+#include "Memory.hpp"
 
 extern "C" void Main() {
 	int iCursorX, iCursorY;
@@ -40,6 +41,10 @@ extern "C" void Main() {
 	kSetCursor(45, iCursorY++);
 	kPrintf("Pass], Size = %d MB \n", kGetTotalRAMSize());
 
+	kPrintf("Dynamic Memory Initialize...................[Pass]\n");
+	iCursorY++;
+	kInitializeDynamicMemory();
+	
 	kPrintf("Task Pool And Scheduler Initialize..........[Pass]\n");
 	iCursorY++;
 	kInitializeScheduler();
@@ -61,6 +66,7 @@ extern "C" void Main() {
     kMaskPICInterrupt(0);
     kEnableInterrupt();
     kPrintf("Pass\n");
+
 	
 	kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD |TASK_FLAGS_SYSTEM | TASK_FLAGS_IDLE,
 			0, 0, u64(kIdleTask));

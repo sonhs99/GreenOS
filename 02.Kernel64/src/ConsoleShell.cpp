@@ -7,6 +7,7 @@
 #include "Assembly.hpp"
 #include "Task.hpp"
 #include "Sync.hpp"
+#include "Memory.hpp"
 
 static ShellCommandEntry gs_vstCommandTable[] = {
 	{"help", "Show Help", kHelp},
@@ -29,6 +30,9 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"testthread", "Test Thread And Process Function", kTestThread},
 	{"showmatrix", "Show Matrix Screen", kShowMatrix},
 	{"testpie", "Test PIE Calculation", kTestPIE},
+	{"dynamicmeminfo", "Show Dynamic Memory Information", kShowDynamicMemoryInformation},
+	{"testseqalloc", "Test Sequential Alloction & Free", kTestSequentialAllocation},
+	{"testranalloc", "Test Random Allocation & Free", kTestRandomAllocation},
 };
 
 void kStartConsoleShell() {
@@ -117,12 +121,21 @@ static void kHelp(const char *pcCommandBuffer) {
 		iMaxCommandLength = iMaxCommandLength > iLength ? iMaxCommandLength : iLength;
 	}
 
-	int iCursorX, iCursorY;
+	int iCursorX, iCursorY, i = 0;
 	for(auto &stCommand: gs_vstCommandTable) {
 		kPrintf("%s", stCommand.pcCommand );
 		kGetCursor(iCursorX, iCursorY);
 		kSetCursor(iMaxCommandLength, iCursorY);
 		kPrintf("  - %s\n", stCommand.pcHelp);
+		if((i != 0) && ((i % 20) == 0)) {
+			kPrintf("Press any key to continue... ('q' is exit) : ");
+			if(kGetCh() == 'q') {
+				kPrintf("\n");
+				break;
+			}
+			kPrintf("\n");
+		}
+		i++;
 	}
 }
 
@@ -510,4 +523,86 @@ static void kTestPIE(const char *pcParameterBuffer) {
 	kPrintf("%d.%d%d\n", u64(dResult), u64(dResult * 10) % 10, u64(dResult * 100) % 10);
 	for(int i = 0; i < 100; i++)
 		kCreateTask(TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, u64(kFPUTestTask));
+}
+
+static void kShowDynamicMemoryInformation(const char *pcParameterBuffer) {
+	u64 qwStartAddress, qwTotalSize, qwMetaSize, qwUsedSize;
+	kGetDynamicMemoryInformation(qwStartAddress, qwTotalSize, qwMetaSize, qwUsedSize);
+	kPrintf("================ Dynamic Memory Information ==================\n");
+	kPrintf("Start Address: [0x%q]\n", qwStartAddress);
+	kPrintf("Total Size:    [0x%q]byte, [%d]MB\n", qwTotalSize, qwTotalSize / 1024 / 1024);
+	kPrintf("Meta Size:     [0x%q]byte, [%d]KB\n", qwMetaSize, qwMetaSize / 1024);
+	kPrintf("Used Size:     [0x%q]byte, [%d]KB\n", qwUsedSize, qwUsedSize / 1024);
+}
+
+static void kTestSequentialAllocation(const char *pcParameterBuffer) {
+	DynamicMemory& pstMemory = kGetDynamicMemoryManager();
+	kPrintf("============ Dynamic Memory Test ============\n");
+	for(int i = 0; i < pstMemory.iMaxLevelCount; i++) {
+		kPrintf("Block List [%d] Test Start\n", i);
+		kPrintf("Allocation And Compare: ");
+		for(int j = 0; j < (pstMemory.iBlockCountOfSmallestBlock >> i); j++){
+			u64 *pqwBuffer = (u64*)kAllocateMemory(DYNAMICMEMORY_MIN_SIZE << i);
+			// kPrintf("0x%p\n", pqwBuffer);
+			if(pqwBuffer == nullptr) {
+				kPrintf("\nAllocation Fail\n");
+				return;
+			}
+			for(int k = 0; k < (DYNAMICMEMORY_MIN_SIZE << i) / 8; k++)
+				pqwBuffer[k] = k;
+			for(int k = 0; k < (DYNAMICMEMORY_MIN_SIZE << i) / 8; k++)
+				if(pqwBuffer[k] != k) {
+					kPrintf("Compare Fail\n");
+					return;
+				}
+			kPrintf(".");
+		}
+		kPrintf("\nFree: ");
+		for(int j = 0; j < (pstMemory.iBlockCountOfSmallestBlock >> i); j++) {
+			if(!kFreeMemory((void*)(pstMemory.qwStartAddress + (DYNAMICMEMORY_MIN_SIZE << i) * j))) {
+				kPrintf("Free Fail\n");
+				return;
+			}
+			kPrintf(".");
+		}
+		kPrintf("\n");
+	}
+	kPrintf("Test Complete.\n");
+}
+
+static void kRandomAllocationTask() {
+	Task *pstTask = kGetRunningTask();
+	char vcBuffer[200];
+	int iY = pstTask->qwID % 15 + 9;
+	for(int j = 0; j < 10; j++) {
+		u8 *pbAllocationBuffer;
+		u64 qwMemorySize;
+		do {
+			qwMemorySize = ((kRandom() % (32 * 1024)) + 1) * 1024;
+			pbAllocationBuffer = (u8 *)kAllocateMemory(qwMemorySize);
+			if(pbAllocationBuffer == nullptr) kSleep(1);
+		} while(pbAllocationBuffer == nullptr);
+		kSPrintf(vcBuffer, "|Address: [0x%Q] Size: [0x%Q] Allocation Success", pbAllocationBuffer, qwMemorySize);
+		kPrintStringXY(20, iY, vcBuffer);
+		for(int i = 0; i < qwMemorySize / 2; i++) {
+			pbAllocationBuffer[i] = kRandom() % 0xFF;
+			pbAllocationBuffer[i + (qwMemorySize / 2)] = pbAllocationBuffer[i];
+		}
+		kSleep(200);
+		kSPrintf(vcBuffer, "|Address: [0x%Q] Size: [0x%Q] Data Verify...   ", pbAllocationBuffer, qwMemorySize);
+		kPrintStringXY(20, iY, vcBuffer);
+		for(int i = 0; i < qwMemorySize / 2; i++)
+			if(pbAllocationBuffer[i] != pbAllocationBuffer[i + qwMemorySize / 2]) {
+				kPrintf("Task ID[0x%Q] Verify Fail\n", pstTask->qwID);
+				kExitTask();
+			}
+		kFreeMemory(pbAllocationBuffer);
+		kSleep(100);
+	}
+	kExitTask();
+}
+
+static void kTestRandomAllocation(const char *pcParameterBuffer) {
+	for(int i = 0; i < 10; i++)
+		kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD, 0, 0, u64(kRandomAllocationTask));
 }
