@@ -543,7 +543,6 @@ static void kTestSequentialAllocation(const char *pcParameterBuffer) {
 		kPrintf("Allocation And Compare: ");
 		for(int j = 0; j < (pstMemory.iBlockCountOfSmallestBlock >> i); j++){
 			u64 *pqwBuffer = (u64*)kAllocateMemory(DYNAMICMEMORY_MIN_SIZE << i);
-			// kPrintf("0x%p\n", pqwBuffer);
 			if(pqwBuffer == nullptr) {
 				kPrintf("\nAllocation Fail\n");
 				return;
@@ -603,6 +602,6 @@ static void kRandomAllocationTask() {
 }
 
 static void kTestRandomAllocation(const char *pcParameterBuffer) {
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 100; i++)
 		kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD, 0, 0, u64(kRandomAllocationTask));
 }
