@@ -5,6 +5,7 @@
 #include "Utility.hpp"
 #include "Task.hpp"
 #include "Assembly.hpp"
+#include "HardDisk.hpp"
 
 void kCommonExceptionHandler(int iVectorNumber, u64 qwErrorCode) {
     char vcBuffer[3] = {0,};
@@ -100,4 +101,23 @@ void kDeviceNotAvailableHandler(int iVectorNumber) {
         pstCurrentTask->bFPUUsed = true;
     } else kLoadFPUContext(pstCurrentTask->vqwFPUContext);
     kSetLastFPUUsedTaskID(pstCurrentTask->qwID);
+}
+
+void kHDDHandler(int iVectorNumber) {
+    char vcBuffer[] = "[INT:  , ]";
+    static int g_iHDDInterruptCount = 0;
+
+    vcBuffer[5] = '0' + iVectorNumber / 10;
+    vcBuffer[6] = '0' + iVectorNumber % 10;
+    vcBuffer[8] = '0' + g_iHDDInterruptCount;
+
+    g_iHDDInterruptCount = (g_iHDDInterruptCount + 1) % 10;
+
+    kPrintStringXY(10, 0, vcBuffer);
+
+    if(iVectorNumber - PIC_IRQSTARTVECTOR == 14)
+        kSetHDDInterruptFlag(true, true);
+    else kSetHDDInterruptFlag(false, true);
+
+    kSendEOIToPIC(iVectorNumber - PIC_IRQSTARTVECTOR);
 }

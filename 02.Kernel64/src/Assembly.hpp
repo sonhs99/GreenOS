@@ -21,4 +21,6 @@ extern "C" {
     void kLoadFPUContext(void *pvFPUContext);
     void kSetTS();
     void kClearTS();
+    u16  kInPortWord(u16 wPort);
+    void kOutPortWord(u16 wPort, u16 wData);
 }

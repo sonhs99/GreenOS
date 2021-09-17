@@ -8,6 +8,7 @@
 #include "Task.hpp"
 #include "Sync.hpp"
 #include "Memory.hpp"
+#include "HardDisk.hpp"
 
 static ShellCommandEntry gs_vstCommandTable[] = {
 	{"help", "Show Help", kHelp},
@@ -30,9 +31,13 @@ static ShellCommandEntry gs_vstCommandTable[] = {
 	{"testthread", "Test Thread And Process Function", kTestThread},
 	{"showmatrix", "Show Matrix Screen", kShowMatrix},
 	{"testpie", "Test PIE Calculation", kTestPIE},
+
 	{"dynamicmeminfo", "Show Dynamic Memory Information", kShowDynamicMemoryInformation},
 	{"testseqalloc", "Test Sequential Alloction & Free", kTestSequentialAllocation},
 	{"testranalloc", "Test Random Allocation & Free", kTestRandomAllocation},
+	{"hddinfo", "Show HDD Information", kShowHDDInformation},
+	{"readsector", "Read HDD Sector, ex)readsector 0(LBA) 10(Count)", kReadSector},
+	{"writesector", "Write HDD Sector, ex)writesector 0(LBA) 10(Count)", kWriteSector},
 };
 
 void kStartConsoleShell() {
@@ -604,4 +609,111 @@ static void kRandomAllocationTask() {
 static void kTestRandomAllocation(const char *pcParameterBuffer) {
 	for(int i = 0; i < 100; i++)
 		kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD, 0, 0, u64(kRandomAllocationTask));
+}
+
+static void kShowHDDInformation(const char *pcParameterBuffer) {
+	HDDInformation stHDD;
+	char vcBuffer[100];
+	if(!kReadHDDInformation(true, true, stHDD))	{
+		kPrintf("HDD Information Read Fail\n");
+		return;
+	}
+
+	kPrintf("============= Primary Master HDD Information =============\n");
+
+	kMemCpy(vcBuffer, stHDD.vwModelNumber, sizeof(stHDD.vwModelNumber));
+	vcBuffer[sizeof(stHDD.vwModelNumber) - 1] = '\0';
+	kPrintf("Model Number:\t %s\n", vcBuffer);
+
+	kPrintf("Head Count:\t %d\n", stHDD.wNumberOfHead);
+	kPrintf("Cylinder Count:\t %d\n", stHDD.wNumberOfCylinder);
+	kPrintf("Sector Count:\t %d\n", stHDD.wNumberOfSectorPerCylinder);
+
+	kPrintf("Total Sector:\t %d Sector, %dMB\n", stHDD.dwTotalSector, stHDD.dwTotalSector / 2 / 1024);
+}
+
+static void kReadSector(const char *pcParameterBuffer) {
+	ParameterList stList(pcParameterBuffer);
+	char vcLBA[50], vcSectorCount[50];
+	if(stList.getNextParameter(vcLBA) == 0 || stList.getNextParameter(vcSectorCount) == 0) {
+		kPrintf("ex) readsector 0(LBA) 10(Count)\n");
+		return;
+	}
+
+	u32 dwLBA = kAToI(vcLBA, 10);
+	int iSectorCount = kAToI(vcSectorCount, 10);
+
+	char *pcBuffer = (char*)kAllocateMemory(iSectorCount * 512);
+	bool bExit = false;
+	if(kReadHDDSector(true, true, dwLBA, iSectorCount, pcBuffer) == iSectorCount) {
+		kPrintf("LBA[%d], [%d] Sector Read Success", dwLBA, iSectorCount);
+		for(int j = 0; j < iSectorCount; j++) {
+			for(int i = 0; i < 512; i++) {
+				if(!((j == 0) && (i == 0)) && ((i % 256) == 0)) {
+					kPrintf("\nPress any key to continue... ('q' is exit) : ");
+					if(kGetCh() == 'q') {
+						bExit = true;
+						break;
+					}
+				}
+				if((i%16 == 0))
+					kPrintf("\n[LBA:%d, Offset:%d]\t| ", dwLBA + j, i);
+				u8 bData = pcBuffer[j * 512 + i] & 0xFF;
+				if(bData < 16) kPrintf("0");
+				kPrintf("%x ", bData);
+			}
+			if(bExit) break;
+		}
+		kPrintf("\n");
+	} else kPrintf("Read Fail\n");
+	kFreeMemory(pcBuffer);
+}
+
+static void kWriteSector(const char *pcParameterBuffer) {
+	ParameterList stList(pcParameterBuffer);
+	char vcLBA[50], vcSectorCount[50];
+	if(stList.getNextParameter(vcLBA) == 0 || stList.getNextParameter(vcSectorCount) == 0) {
+		kPrintf("ex) writesector 0(LBA) 10(Count)\n");
+		return;
+	}
+
+	u32 dwLBA = kAToI(vcLBA, 10);
+	int iSectorCount = kAToI(vcSectorCount, 10);
+
+	static u32 s_dwWriteCount = 0;
+	s_dwWriteCount++;
+	char *pcBuffer = (char*)kAllocateMemory(iSectorCount * 512);
+	for(int j = 0; j < iSectorCount; j++) {
+		for(int i = 0; i < 512; i += 8) {
+			*(u32 *) &(pcBuffer[j * 512 + i]) = dwLBA + j;
+			*(u32 *) &(pcBuffer[j * 512 + i + 4]) = s_dwWriteCount;
+		}
+	}
+
+	if(kWriteHDDSector(true, true, dwLBA, iSectorCount, pcBuffer) != iSectorCount) {
+		kPrintf("Write Fail\n");
+		return;
+	}
+	kPrintf("LBA [%d], [%d] Sector Read Success", dwLBA, iSectorCount);
+
+	bool bExit = false;
+	for(int j = 0; j < iSectorCount; j++) {
+		for(int i = 0; i < 512; i++) {
+			if(!((j == 0) && (i == 0)) && ((i % 256) == 0)) {
+				kPrintf("\nPress any key to continue... ('q' is exit) : ");
+				if(kGetCh() == 'q') {
+					bExit = true;
+					break;
+				}
+			}
+			if((i%16 == 0))
+				kPrintf("\n[LBA:%d, Offset:%d]\t| ", dwLBA + j, i);
+			u8 bData = pcBuffer[j * 512 + i] & 0xFF;
+			if(bData < 16) kPrintf("0");
+			kPrintf("%x ", bData);
+		}
+		if(bExit) break;
+	}
+	kPrintf("\n");
+	kFreeMemory(pcBuffer);
 }

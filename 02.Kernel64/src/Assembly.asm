@@ -9,6 +9,7 @@ global kHlt
 global kTestAndSet
 
 global kInitializeFPU, kSaveFPUContext, kLoadFPUContext, kSetTS, kClearTS
+global kInPortWord, kOutPortWord
 
 kInPortByte:
     push rdx
@@ -209,4 +210,26 @@ kSetTS:
 
 kClearTS:
     clts
+    ret
+
+kInPortWord:
+    push rdx
+
+    mov rdx, rdi
+    mov rax, 0
+    in ax, dx
+    
+    pop rdx
+    ret
+
+kOutPortWord:
+    push rdx
+    push rax
+
+    mov rdx, rdi
+    mov rax, rsi
+    out dx, ax
+
+    pop rax
+    pop rdx
     ret

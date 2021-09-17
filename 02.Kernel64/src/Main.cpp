@@ -9,6 +9,7 @@
 #include "Task.hpp"
 #include "PIT.hpp"
 #include "Memory.hpp"
+#include "HardDisk.hpp"
 
 extern "C" void Main() {
 	int iCursorX, iCursorY;
@@ -67,6 +68,10 @@ extern "C" void Main() {
     kEnableInterrupt();
     kPrintf("Pass\n");
 
+	kPrintf("HDD Initialize..............................[    ]");
+	kSetCursor( 45, iCursorY++);
+	if(kInitializeHDD()) kPrintf("Pass\n");
+	else kPrintf("Fail\n");
 	
 	kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD |TASK_FLAGS_SYSTEM | TASK_FLAGS_IDLE,
 			0, 0, u64(kIdleTask));
